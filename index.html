@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Rafidain & Co. Gold Jewelry Pricing Dashboard - Stay Gold">
+    <title>Rafidain & Co. | Gold Pricing Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+
+    <!-- Header -->
+    <header id="main-header">
+        <div class="header-inner">
+            <div class="header-left">
+                <div class="logo-wrap">
+                    <img src="logo.png" alt="Rafidain & Co. Logo" id="header-logo">
+                </div>
+                <div class="header-brand">
+                    <h1 id="site-title">Rafidain & Co.</h1>
+                    <span id="site-tagline">STAY GOLD</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="header-time-block">
+                    <span class="header-time" id="current-time"></span>
+                    <span class="header-date" id="current-date"></span>
+                </div>
+            </div>
+        </div>
+        <div class="header-gold-line"></div>
+    </header>
+
+    <!-- Main -->
+    <main id="main-content">
+
+        <!-- Toolbar -->
+        <div class="toolbar">
+            <div class="toolbar-left">
+                <h2 class="toolbar-title">Gold Pricing Sheet</h2>
+            </div>
+            <div class="toolbar-right">
+                <button class="toolbar-btn" id="btn-refresh" title="Refresh">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="23 4 23 10 17 10"></polyline>
+                        <polyline points="1 20 1 14 7 14"></polyline>
+                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                    </svg>
+                </button>
+                <button class="toolbar-btn" id="btn-print" title="Print">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                        <rect x="6" y="14" width="12" height="8"></rect>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Table Card -->
+        <div class="table-card">
+            <table id="pricing-table">
+                <thead>
+                    <tr>
+                        <th class="corner-cell"></th>
+                        <th class="col-head">22K</th>
+                        <th class="col-head">21K</th>
+                        <th class="col-head">18K</th>
+                        <th class="col-head">14K</th>
+                        <th class="col-head">10K</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr data-row="sell">
+                        <td class="row-label">Sell</td>
+                        <td class="cell" data-row="sell" data-col="22K" contenteditable="true"></td>
+                        <td class="cell" data-row="sell" data-col="21K" contenteditable="true"></td>
+                        <td class="cell" data-row="sell" data-col="18K" contenteditable="true"></td>
+                        <td class="cell" data-row="sell" data-col="14K" contenteditable="true"></td>
+                        <td class="cell" data-row="sell" data-col="10K" contenteditable="true"></td>
+                    </tr>
+                    <tr data-row="buy">
+                        <td class="row-label">Buy</td>
+                        <td class="cell" data-row="buy" data-col="22K" contenteditable="true"></td>
+                        <td class="cell" data-row="buy" data-col="21K" contenteditable="true"></td>
+                        <td class="cell" data-row="buy" data-col="18K" contenteditable="true"></td>
+                        <td class="cell" data-row="buy" data-col="14K" contenteditable="true"></td>
+                        <td class="cell" data-row="buy" data-col="10K" contenteditable="true"></td>
+                    </tr>
+                    <tr class="divider-row">
+                        <td colspan="6">
+                            <div class="divider-line"></div>
+                        </td>
+                    </tr>
+                    <tr data-row="preowned">
+                        <td class="row-label">Pre-owned</td>
+                        <td class="cell" data-row="preowned" data-col="22K" contenteditable="true"></td>
+                        <td class="cell" data-row="preowned" data-col="21K" contenteditable="true"></td>
+                        <td class="cell" data-row="preowned" data-col="18K" contenteditable="true"></td>
+                        <td class="cell" data-row="preowned" data-col="14K" contenteditable="true"></td>
+                        <td class="cell" data-row="preowned" data-col="10K" contenteditable="true"></td>
+                    </tr>
+                    <tr class="divider-row">
+                        <td colspan="6">
+                            <div class="divider-line"></div>
+                        </td>
+                    </tr>
+                    <tr data-row="lira">
+                        <td class="row-label">Lira</td>
+                        <td class="cell" data-row="lira" data-col="22K" contenteditable="true"></td>
+                        <td class="cell" data-row="lira" data-col="21K" contenteditable="true"></td>
+                        <td class="cell" data-row="lira" data-col="18K" contenteditable="true"></td>
+                        <td class="cell" data-row="lira" data-col="14K" contenteditable="true"></td>
+                        <td class="cell" data-row="lira" data-col="10K" contenteditable="true"></td>
+                    </tr>
+                    <tr class="divider-row">
+                        <td colspan="6">
+                            <div class="divider-line"></div>
+                        </td>
+                    </tr>
+                    <tr data-row="braided">
+                        <td class="row-label">Braided Bangle</td>
+                        <td class="cell" data-row="braided" data-col="22K" contenteditable="true">1-2</td>
+                        <td class="cell" data-row="braided" data-col="21K" contenteditable="true"></td>
+                        <td class="cell" data-row="braided" data-col="18K" contenteditable="true">3-6</td>
+                        <td class="cell" data-row="braided" data-col="14K" contenteditable="true"></td>
+                        <td class="cell" data-row="braided" data-col="10K" contenteditable="true"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Bottom Bar -->
+        <div class="bottom-bar">
+            <div class="tabs">
+                <span class="tab active">Pricing</span>
+                <button class="tab-add">+</button>
+            </div>
+            <span class="cell-ref" id="cell-indicator">Ready</span>
+        </div>
+
+    </main>
+
+    <script src="script.js"></script>
+</body>
+
+</html>

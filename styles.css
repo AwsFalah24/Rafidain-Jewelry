@@ -1,0 +1,549 @@
+/* ============================================
+   RAFIDAIN & CO. — GOLD PRICING DASHBOARD
+   Warm brand palette · Modern professional
+   Font: Plus Jakarta Sans
+   ============================================ */
+
+:root {
+    /* Brand from logo */
+    --maroon-900: #2E1008;
+    --maroon-800: #3D1508;
+    --maroon-700: #4E1A0C;
+    --maroon-600: #5C2210;
+    --maroon-500: #7B3014;
+    --maroon-400: #9E5A3A;
+
+    --gold-700: #7A5C18;
+    --gold-600: #A07820;
+    --gold-500: #C8982A;
+    --gold-400: #DAA520;
+    --gold-300: #E8C44A;
+    --gold-200: #F0D878;
+    --gold-100: #F5EDD4;
+    --gold-50: #FBF6EA;
+
+    /* Neutrals */
+    --gray-900: #1C1612;
+    --gray-800: #2C2420;
+    --gray-700: #3D3530;
+    --gray-600: #5C534E;
+    --gray-500: #7A726C;
+    --gray-400: #9E968F;
+    --gray-300: #BCB5AF;
+    --gray-200: #D9D4D0;
+    --gray-100: #EBE8E5;
+    --gray-50: #F6F4F2;
+    --white: #FFFFFF;
+
+    /* Font */
+    --font: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+    /* Radius */
+    --r-sm: 8px;
+    --r-md: 12px;
+    --r-lg: 16px;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px rgba(44, 24, 16, 0.05);
+    --shadow-md: 0 4px 12px rgba(44, 24, 16, 0.08);
+    --shadow-lg: 0 8px 30px rgba(44, 24, 16, 0.1);
+    --shadow-cell: inset 0 0 0 2px var(--gold-500);
+}
+
+/* === RESET === */
+*,
+*::before,
+*::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box
+}
+
+html {
+    font-size: 15px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale
+}
+
+body {
+    font-family: var(--font);
+    background: var(--gray-50);
+    color: var(--gray-900);
+    min-height: 100vh;
+}
+
+/* =========================
+   HEADER
+   ========================= */
+#main-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: var(--maroon-800);
+}
+
+.header-inner {
+    max-width: 1400px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 28px;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.logo-wrap {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--r-sm);
+    overflow: hidden;
+    background: var(--white);
+    flex-shrink: 0;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1), var(--shadow-md);
+    transition: transform 0.25s ease;
+}
+
+.logo-wrap:hover {
+    transform: scale(1.04);
+}
+
+#header-logo {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+}
+
+.header-brand {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+#site-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--white);
+    letter-spacing: -0.3px;
+    line-height: 1.2;
+}
+
+#site-tagline {
+    font-size: 0.6rem;
+    font-weight: 700;
+    color: var(--gold-400);
+    letter-spacing: 3px;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+}
+
+.header-time-block {
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.header-time {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--white);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.3;
+}
+
+.header-date {
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: var(--gold-100);
+    opacity: 0.7;
+}
+
+/* Gold accent line */
+.header-gold-line {
+    height: 3px;
+    background: linear-gradient(90deg, var(--gold-600), var(--gold-400), var(--gold-300), var(--gold-400), var(--gold-600));
+    background-size: 200% 100%;
+    animation: shimmer 6s linear infinite;
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+/* =========================
+   MAIN
+   ========================= */
+#main-content {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 24px 28px 48px;
+    animation: fadeUp 0.5s ease both;
+}
+
+@keyframes fadeUp {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* =========================
+   TOOLBAR
+   ========================= */
+.toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+.toolbar-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--maroon-700);
+    letter-spacing: -0.3px;
+}
+
+.toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.toolbar-btn {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--r-sm);
+    background: var(--white);
+    color: var(--gray-500);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.toolbar-btn:hover {
+    border-color: var(--gold-500);
+    color: var(--maroon-500);
+    background: var(--gold-50);
+    box-shadow: var(--shadow-sm);
+}
+
+.toolbar-btn:active {
+    transform: scale(0.95);
+}
+
+/* =========================
+   TABLE CARD
+   ========================= */
+.table-card {
+    background: var(--white);
+    border: 1px solid var(--gray-100);
+    border-radius: var(--r-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-lg);
+    animation: fadeUp 0.55s ease 0.08s both;
+}
+
+#pricing-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+/* --- Column Headers --- */
+.corner-cell {
+    width: 170px;
+    min-width: 170px;
+    background: var(--maroon-700);
+    padding: 22px 24px;
+    border-bottom: 2px solid var(--gold-500);
+}
+
+.col-head {
+    background: var(--maroon-700);
+    color: var(--gold-300);
+    font-size: 1.15rem;
+    font-weight: 700;
+    text-align: center;
+    padding: 22px 20px;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid var(--gold-500);
+    border-left: 1px solid rgba(255, 255, 255, 0.06);
+    user-select: none;
+}
+
+/* --- Row Labels --- */
+.row-label {
+    width: 170px;
+    min-width: 170px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--maroon-600);
+    padding: 22px 24px;
+    background: var(--gray-50);
+    border-bottom: 1px solid var(--gray-100);
+    border-right: 1px solid var(--gray-100);
+    white-space: nowrap;
+    user-select: none;
+    transition: background 0.15s ease;
+}
+
+/* --- Cells --- */
+.cell {
+    padding: 22px 20px;
+    text-align: center;
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--gray-800);
+    background: var(--white);
+    border-bottom: 1px solid var(--gray-100);
+    border-right: 1px solid var(--gray-100);
+    cursor: text;
+    outline: none;
+    transition: all 0.15s ease;
+    min-height: 60px;
+    font-variant-numeric: tabular-nums;
+}
+
+.cell:last-child {
+    border-right: none;
+}
+
+.cell:hover {
+    background: rgba(200, 152, 42, 0.04);
+}
+
+.cell:focus {
+    background: rgba(200, 152, 42, 0.07);
+    box-shadow: var(--shadow-cell);
+    z-index: 2;
+    position: relative;
+}
+
+.cell.selected {
+    background: rgba(200, 152, 42, 0.07);
+    box-shadow: var(--shadow-cell);
+}
+
+/* Row hover */
+tbody tr:not(.divider-row):hover .cell {
+    background: rgba(200, 152, 42, 0.03);
+}
+
+tbody tr:not(.divider-row):hover .row-label {
+    background: var(--gold-50);
+    color: var(--maroon-700);
+}
+
+/* --- Divider rows --- */
+.divider-row td {
+    padding: 0;
+    height: 8px;
+    background: var(--gray-50);
+    border: none;
+}
+
+.divider-line {
+    height: 1px;
+    margin: 0 20px;
+    background: linear-gradient(90deg, var(--gray-200), var(--gray-100), transparent);
+}
+
+/* =========================
+   BOTTOM BAR
+   ========================= */
+.bottom-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: -1px;
+    padding: 8px 16px;
+    background: var(--white);
+    border: 1px solid var(--gray-100);
+    border-top: 1px solid var(--gray-100);
+    border-radius: 0 0 var(--r-lg) var(--r-lg);
+    box-shadow: var(--shadow-md);
+    animation: fadeUp 0.55s ease 0.16s both;
+}
+
+.tabs {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.tab {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 16px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--gray-400);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.tab:hover {
+    color: var(--gray-600);
+    background: var(--gray-50);
+}
+
+.tab.active {
+    background: var(--gold-50);
+    color: var(--gold-600);
+    border: 1px solid var(--gold-100);
+}
+
+.tab-add {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    border: 1px dashed var(--gray-200);
+    border-radius: 6px;
+    background: none;
+    color: var(--gray-400);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.tab-add:hover {
+    border-color: var(--gold-500);
+    color: var(--gold-500);
+    background: var(--gold-50);
+}
+
+.cell-ref {
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: var(--gray-400);
+    padding: 4px 12px;
+    background: var(--gray-50);
+    border-radius: 6px;
+    border: 1px solid var(--gray-100);
+    font-variant-numeric: tabular-nums;
+}
+
+/* =========================
+   RESPONSIVE
+   ========================= */
+@media (max-width: 768px) {
+    .header-inner {
+        padding: 10px 16px;
+    }
+
+    .logo-wrap {
+        width: 38px;
+        height: 38px;
+    }
+
+    #site-title {
+        font-size: 1.05rem;
+    }
+
+    #site-tagline {
+        font-size: 0.55rem;
+        letter-spacing: 2px;
+    }
+
+    #main-content {
+        padding: 16px 10px 32px;
+    }
+
+    .toolbar-title {
+        font-size: 1.05rem;
+    }
+
+    .corner-cell,
+    .row-label {
+        width: 108px;
+        min-width: 108px;
+        padding: 12px 12px;
+        font-size: 0.8rem;
+    }
+
+    .col-head {
+        padding: 14px 8px;
+        font-size: 0.9rem;
+    }
+
+    .cell {
+        padding: 12px 8px;
+        font-size: 0.82rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .header-right {
+        display: none;
+    }
+
+    .corner-cell,
+    .row-label {
+        width: 88px;
+        min-width: 88px;
+        font-size: 0.73rem;
+        padding: 10px 8px;
+    }
+}
+
+/* =========================
+   PRINT
+   ========================= */
+@media print {
+    body {
+        background: #fff;
+    }
+
+    #main-header {
+        position: static;
+    }
+
+    .header-gold-line {
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+    }
+
+    .toolbar-right {
+        display: none;
+    }
+
+    .table-card,
+    .bottom-bar {
+        box-shadow: none;
+        border: 1px solid #ddd;
+    }
+
+    .col-head,
+    .corner-cell {
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+    }
+}

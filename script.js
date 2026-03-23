@@ -5,12 +5,89 @@
 (function () {
     'use strict';
 
+    var METAL_PRICES_URL = 'https://www.xau.ca/apps/api/metalprices/CAD';
+    var AUTO_REFRESH_MS = 5 * 60 * 1000;
+
+    /** Mon–Sat, 10:00–17:59 (local time on this device). */
+    function isBusinessHoursActive(date) {
+        var d = date || new Date();
+        var day = d.getDay();
+        if (day < 1 || day > 6) return false;
+        var h = d.getHours();
+        return h >= 10 && h < 18;
+    }
+
     var dateEl = document.getElementById('current-date');
     var timeEl = document.getElementById('current-time');
     var indicator = document.getElementById('cell-indicator');
     var btnRefresh = document.getElementById('btn-refresh');
     var btnPrint = document.getElementById('btn-print');
     var cells = document.querySelectorAll('.cell');
+
+    // --- Gold spot (CAD/g) from xau.ca — same value per karat column until you add karat formulas ---
+    function formatCadPerGram(spotStr) {
+        var n = parseFloat(String(spotStr));
+        if (isNaN(n)) return '';
+        return '$' + n.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function fetchMetalPricesJson() {
+        return fetch(METAL_PRICES_URL, { credentials: 'omit' })
+            .then(function (r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            })
+            .catch(function () {
+                return fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(METAL_PRICES_URL), { credentials: 'omit' })
+                    .then(function (r) {
+                        if (!r.ok) throw new Error('HTTP ' + r.status);
+                        return r.json();
+                    });
+            });
+    }
+
+    function applyGoldSpotPrices(data) {
+        var gold = data && data.prices && data.prices.gold;
+        if (!gold || !gold.sell || !gold.buy) {
+            indicator.textContent = 'Gold prices unavailable';
+            return;
+        }
+
+        var sellG = formatCadPerGram(gold.sell.spot_g);
+        var buyG = formatCadPerGram(gold.buy.spot_g);
+        var baseG = sellG;
+
+        cells.forEach(function (cell) {
+            var row = cell.dataset.row;
+            var text = baseG;
+            if (row === 'sell') text = sellG;
+            else if (row === 'buy') text = buyG;
+            cell.textContent = text;
+        });
+
+        var updated = data.rates && data.rates.lastUpdate;
+        var when = '';
+        if (updated) {
+            try {
+                when = new Date(updated).toLocaleString('en-CA', { dateStyle: 'short', timeStyle: 'short' });
+            } catch { when = updated; }
+        }
+        indicator.textContent = 'Gold spot CAD/g · xau.ca' + (when ? ' · ' + when : '');
+    }
+
+    function loadMetalPrices() {
+        indicator.textContent = 'Loading gold…';
+        fetchMetalPricesJson()
+            .then(applyGoldSpotPrices)
+            .catch(function () {
+                indicator.textContent = 'Could not load gold prices';
+            });
+    }
+
+    function maybeAutoRefreshMetalPrices() {
+        if (!isBusinessHoursActive()) return;
+        loadMetalPrices();
+    }
 
     // --- Clock ---
     function tick() {
@@ -21,58 +98,13 @@
     tick();
     setInterval(tick, 1000);
 
-    // --- Selection ---
-    var active = null;
-    var rowNames = { sell: 'Sell', buy: 'Buy', preowned: 'Pre-owned', lira: 'Lira', braided: 'Braided Bangle' };
-
-    function select(cell) {
-        if (active) active.classList.remove('selected');
-        active = cell;
-        cell.classList.add('selected');
-        indicator.textContent = (rowNames[cell.dataset.row] || cell.dataset.row) + ' \u00B7 ' + cell.dataset.col;
-    }
-
-    function deselect() {
-        if (active) { active.classList.remove('selected'); active = null; }
-        indicator.textContent = 'Ready';
-    }
-
-    cells.forEach(function (c) {
-        c.addEventListener('focus', function () { select(c); });
-
-        c.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter') { e.preventDefault(); move(c, 'down'); }
-            if (e.key === 'Escape') { e.preventDefault(); c.blur(); deselect(); }
-            if (e.altKey && e.key === 'ArrowDown') { e.preventDefault(); move(c, 'down'); }
-            if (e.altKey && e.key === 'ArrowUp') { e.preventDefault(); move(c, 'up'); }
-            if (e.altKey && e.key === 'ArrowRight') { e.preventDefault(); move(c, 'right'); }
-            if (e.altKey && e.key === 'ArrowLeft') { e.preventDefault(); move(c, 'left'); }
-        });
-    });
-
-    function move(cell, dir) {
-        var row = cell.closest('tr');
-        var idx = Array.from(row.children).indexOf(cell);
-        var target = null;
-
-        if (dir === 'right') { var n = cell.nextElementSibling; if (n && n.classList.contains('cell')) target = n; }
-        if (dir === 'left') { var p = cell.previousElementSibling; if (p && p.classList.contains('cell')) target = p; }
-        if (dir === 'down') { var nr = row.nextElementSibling; while (nr && nr.classList.contains('divider-row')) nr = nr.nextElementSibling; if (nr) { var nc = nr.querySelectorAll('.cell'); if (nc[idx - 1]) target = nc[idx - 1]; } }
-        if (dir === 'up') { var pr = row.previousElementSibling; while (pr && pr.classList.contains('divider-row')) pr = pr.previousElementSibling; if (pr) { var pc = pr.querySelectorAll('.cell'); if (pc[idx - 1]) target = pc[idx - 1]; } }
-
-        if (target) target.focus();
-    }
-
-    document.addEventListener('click', function (e) {
-        if (!e.target.closest('#pricing-table')) deselect();
-    });
-
     // --- Buttons ---
     btnRefresh.addEventListener('click', function () {
         var svg = btnRefresh.querySelector('svg');
         svg.style.transition = 'transform 0.5s ease';
         svg.style.transform = 'rotate(360deg)';
         setTimeout(function () { svg.style.transition = 'none'; svg.style.transform = ''; }, 500);
+        loadMetalPrices();
     });
 
     btnPrint.addEventListener('click', function () { window.print(); });
@@ -85,5 +117,8 @@
         r.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
         setTimeout(function () { r.style.opacity = '1'; r.style.transform = 'translateY(0)'; }, 120 + i * 60);
     });
+
+    loadMetalPrices();
+    setInterval(maybeAutoRefreshMetalPrices, AUTO_REFRESH_MS);
 
 })();

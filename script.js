@@ -7,7 +7,8 @@
 
     var METAL_PRICES_URL = 'https://www.xau.ca/apps/api/metalprices/CAD';
     var AUTO_REFRESH_MS = 5 * 60 * 1000;
-    var FETCH_TIMEOUT_MS = 4500;
+    var FETCH_TIMEOUT_MS_DIRECT = 2500;
+    var FETCH_TIMEOUT_MS_PROXY = 9000;
     var REFRESH_CLICK_COOLDOWN_MS = 2000;
     var latestApiUpdateMs = 0;
     var isRefreshing = false;
@@ -42,6 +43,14 @@
     }
 
     function fetchJsonWithTimeout(url, timeoutMs) {
+        if (typeof AbortController === 'undefined') {
+            return fetch(url, { credentials: 'omit', cache: 'no-store' })
+                .then(function (r) {
+                    if (!r.ok) throw new Error('HTTP ' + r.status);
+                    return r.json();
+                });
+        }
+
         var controller = new AbortController();
         var timer = setTimeout(function () { controller.abort(); }, timeoutMs);
         return fetch(url, {
@@ -62,10 +71,10 @@
         var directUrl = withNoCache(METAL_PRICES_URL);
         var proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(withNoCache(METAL_PRICES_URL));
 
-        return fetchJsonWithTimeout(directUrl, FETCH_TIMEOUT_MS)
+        return fetchJsonWithTimeout(directUrl, FETCH_TIMEOUT_MS_DIRECT)
             .then(function (data) { return { data: data, source: 'live' }; })
             .catch(function () {
-                return fetchJsonWithTimeout(proxyUrl, FETCH_TIMEOUT_MS)
+                return fetchJsonWithTimeout(proxyUrl, FETCH_TIMEOUT_MS_PROXY)
                     .then(function (data) { return { data: data, source: 'proxy' }; });
             });
     }
@@ -124,8 +133,9 @@
                 var checkedAt = new Date().toLocaleTimeString('en-CA', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
                 indicator.textContent = indicator.textContent + ' · checked ' + checkedAt;
             })
-            .catch(function () {
+            .catch(function (err) {
                 indicator.textContent = 'Could not load gold prices';
+                if (err && err.message) indicator.textContent += ' (' + err.message + ')';
             })
             .finally(function () {
                 isRefreshing = false;

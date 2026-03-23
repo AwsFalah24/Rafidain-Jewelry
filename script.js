@@ -7,6 +7,8 @@
 
     var METAL_PRICES_URL = 'https://www.xau.ca/apps/api/metalprices/CAD';
     var AUTO_REFRESH_MS = 5 * 60 * 1000;
+    var FETCH_TIMEOUT_MS = 4500;
+    var latestApiUpdateMs = 0;
 
     /** Mon–Sat, 10:00–17:59 (local time on this device). */
     function isBusinessHoursActive(date) {
@@ -28,25 +30,46 @@
     function formatCadPerGram(spotStr) {
         var n = parseFloat(String(spotStr));
         if (isNaN(n)) return '';
-        return '$' + n.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        return '$' + n.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 3 });
     }
 
-    function fetchMetalPricesJson() {
-        return fetch(METAL_PRICES_URL, { credentials: 'omit' })
+    function withNoCache(url) {
+        var sep = url.indexOf('?') === -1 ? '?' : '&';
+        return url + sep + '_ts=' + Date.now();
+    }
+
+    function fetchJsonWithTimeout(url, timeoutMs) {
+        var controller = new AbortController();
+        var timer = setTimeout(function () { controller.abort(); }, timeoutMs);
+        return fetch(url, {
+            credentials: 'omit',
+            cache: 'no-store',
+            signal: controller.signal
+        })
             .then(function (r) {
                 if (!r.ok) throw new Error('HTTP ' + r.status);
                 return r.json();
             })
-            .catch(function () {
-                return fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(METAL_PRICES_URL), { credentials: 'omit' })
-                    .then(function (r) {
-                        if (!r.ok) throw new Error('HTTP ' + r.status);
-                        return r.json();
-                    });
+            .finally(function () {
+                clearTimeout(timer);
             });
     }
 
-    function applyGoldSpotPrices(data) {
+    function fetchMetalPricesJson() {
+        var directUrl = withNoCache(METAL_PRICES_URL);
+        var proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(withNoCache(METAL_PRICES_URL));
+
+        return fetchJsonWithTimeout(directUrl, FETCH_TIMEOUT_MS)
+            .then(function (data) { return { data: data, source: 'live' }; })
+            .catch(function () {
+                return fetchJsonWithTimeout(proxyUrl, FETCH_TIMEOUT_MS)
+                    .then(function (data) { return { data: data, source: 'proxy' }; });
+            });
+    }
+
+    function applyGoldSpotPrices(result) {
+        var data = result && result.data;
+        var source = result && result.source ? result.source : 'live';
         var gold = data && data.prices && data.prices.gold;
         if (!gold || !gold.sell || !gold.buy) {
             indicator.textContent = 'Gold prices unavailable';
@@ -66,13 +89,22 @@
         });
 
         var updated = data.rates && data.rates.lastUpdate;
+        var updatedMs = updated ? Date.parse(updated) : NaN;
+        if (!isNaN(updatedMs)) {
+            if (updatedMs < latestApiUpdateMs) {
+                indicator.textContent = 'Ignored older price update';
+                return;
+            }
+            latestApiUpdateMs = updatedMs;
+        }
+
         var when = '';
         if (updated) {
             try {
                 when = new Date(updated).toLocaleString('en-CA', { dateStyle: 'short', timeStyle: 'short' });
             } catch { when = updated; }
         }
-        indicator.textContent = 'Gold spot CAD/g · xau.ca' + (when ? ' · ' + when : '');
+        indicator.textContent = 'Gold spot CAD/g · xau.ca' + (when ? ' · ' + when : '') + (source === 'proxy' ? ' · via proxy' : '');
     }
 
     function loadMetalPrices() {

@@ -62,8 +62,13 @@
                 if (!r.ok) throw new Error('HTTP ' + r.status);
                 return r.json();
             })
-            .finally(function () {
+            .then(function (json) {
                 clearTimeout(timer);
+                return json;
+            })
+            .catch(function (err) {
+                clearTimeout(timer);
+                throw err;
             });
     }
 
@@ -114,7 +119,7 @@
         if (updated) {
             try {
                 when = new Date(updated).toLocaleString('en-CA', { dateStyle: 'short', timeStyle: 'short' });
-            } catch { when = updated; }
+            } catch (e) { when = updated; }
         }
         indicator.textContent = 'Gold spot CAD/g · xau.ca' + (when ? ' · ' + when : '') + (source === 'proxy' ? ' · via proxy' : '');
     }
@@ -133,11 +138,12 @@
                 var checkedAt = new Date().toLocaleTimeString('en-CA', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
                 indicator.textContent = indicator.textContent + ' · checked ' + checkedAt;
             })
+            .then(function () {
+                isRefreshing = false;
+            })
             .catch(function (err) {
                 indicator.textContent = 'Could not load gold prices';
                 if (err && err.message) indicator.textContent += ' (' + err.message + ')';
-            })
-            .finally(function () {
                 isRefreshing = false;
             });
     }

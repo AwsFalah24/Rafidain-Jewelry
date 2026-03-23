@@ -7,8 +7,6 @@
 
     var METAL_PRICES_URL = 'https://www.xau.ca/apps/api/metalprices/CAD';
     var AUTO_REFRESH_MS = 5 * 60 * 1000;
-    var FETCH_TIMEOUT_MS_DIRECT = 2500;
-    var FETCH_TIMEOUT_MS_PROXY = 9000;
     var REFRESH_CLICK_COOLDOWN_MS = 2000;
     var latestApiUpdateMs = 0;
     var isRefreshing = false;
@@ -42,33 +40,14 @@
         return url + sep + '_ts=' + Date.now();
     }
 
-    function fetchJsonWithTimeout(url, timeoutMs) {
-        if (typeof AbortController === 'undefined') {
-            return fetch(url, { credentials: 'omit', cache: 'no-store' })
-                .then(function (r) {
-                    if (!r.ok) throw new Error('HTTP ' + r.status);
-                    return r.json();
-                });
-        }
-
-        var controller = new AbortController();
-        var timer = setTimeout(function () { controller.abort(); }, timeoutMs);
+    function fetchJson(url) {
         return fetch(url, {
             credentials: 'omit',
-            cache: 'no-store',
-            signal: controller.signal
+            cache: 'no-store'
         })
             .then(function (r) {
                 if (!r.ok) throw new Error('HTTP ' + r.status);
                 return r.json();
-            })
-            .then(function (json) {
-                clearTimeout(timer);
-                return json;
-            })
-            .catch(function (err) {
-                clearTimeout(timer);
-                throw err;
             });
     }
 
@@ -76,10 +55,10 @@
         var directUrl = withNoCache(METAL_PRICES_URL);
         var proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(withNoCache(METAL_PRICES_URL));
 
-        return fetchJsonWithTimeout(directUrl, FETCH_TIMEOUT_MS_DIRECT)
+        return fetchJson(directUrl)
             .then(function (data) { return { data: data, source: 'live' }; })
             .catch(function () {
-                return fetchJsonWithTimeout(proxyUrl, FETCH_TIMEOUT_MS_PROXY)
+                return fetchJson(proxyUrl)
                     .then(function (data) { return { data: data, source: 'proxy' }; });
             });
     }

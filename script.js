@@ -53,13 +53,18 @@
 
     function fetchMetalPricesJson() {
         var directUrl = withNoCache(METAL_PRICES_URL);
-        var proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(withNoCache(METAL_PRICES_URL));
+        var codetabsUrl = 'https://api.codetabs.com/v1/proxy/?quest=' + encodeURIComponent(withNoCache(METAL_PRICES_URL));
+        var allOriginsUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(withNoCache(METAL_PRICES_URL));
 
         return fetchJson(directUrl)
             .then(function (data) { return { data: data, source: 'live' }; })
             .catch(function () {
-                return fetchJson(proxyUrl)
-                    .then(function (data) { return { data: data, source: 'proxy' }; });
+                return fetchJson(codetabsUrl)
+                    .then(function (data) { return { data: data, source: 'proxy-codetabs' }; });
+            })
+            .catch(function () {
+                return fetchJson(allOriginsUrl)
+                    .then(function (data) { return { data: data, source: 'proxy-allorigins' }; });
             });
     }
 
@@ -100,7 +105,11 @@
                 when = new Date(updated).toLocaleString('en-CA', { dateStyle: 'short', timeStyle: 'short' });
             } catch (e) { when = updated; }
         }
-        indicator.textContent = 'Gold spot CAD/g · xau.ca' + (when ? ' · ' + when : '') + (source === 'proxy' ? ' · via proxy' : '');
+        var via = '';
+        if (source === 'proxy-codetabs') via = ' · via codetabs';
+        else if (source === 'proxy-allorigins') via = ' · via allorigins';
+        else if (source === 'proxy') via = ' · via proxy';
+        indicator.textContent = 'Gold spot CAD/g · xau.ca' + (when ? ' · ' + when : '') + via;
     }
 
     function loadMetalPrices(options) {

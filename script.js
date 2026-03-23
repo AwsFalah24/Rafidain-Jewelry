@@ -8,7 +8,10 @@
     var METAL_PRICES_URL = 'https://www.xau.ca/apps/api/metalprices/CAD';
     var AUTO_REFRESH_MS = 5 * 60 * 1000;
     var FETCH_TIMEOUT_MS = 4500;
+    var REFRESH_CLICK_COOLDOWN_MS = 2000;
     var latestApiUpdateMs = 0;
+    var isRefreshing = false;
+    var lastManualRefreshAtMs = 0;
 
     /** Mon–Sat, 10:00–17:59 (local time on this device). */
     function isBusinessHoursActive(date) {
@@ -107,12 +110,25 @@
         indicator.textContent = 'Gold spot CAD/g · xau.ca' + (when ? ' · ' + when : '') + (source === 'proxy' ? ' · via proxy' : '');
     }
 
-    function loadMetalPrices() {
-        indicator.textContent = 'Loading gold…';
+    function loadMetalPrices(options) {
+        var opts = options || {};
+        var isManual = opts.manual === true;
+        if (isRefreshing) return;
+        isRefreshing = true;
+
+        indicator.textContent = isManual ? 'Refreshing gold…' : 'Loading gold…';
         fetchMetalPricesJson()
             .then(applyGoldSpotPrices)
+            .then(function () {
+                if (!isManual) return;
+                var checkedAt = new Date().toLocaleTimeString('en-CA', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                indicator.textContent = indicator.textContent + ' · checked ' + checkedAt;
+            })
             .catch(function () {
                 indicator.textContent = 'Could not load gold prices';
+            })
+            .finally(function () {
+                isRefreshing = false;
             });
     }
 
@@ -132,11 +148,17 @@
 
     // --- Buttons ---
     btnRefresh.addEventListener('click', function () {
+        var nowMs = Date.now();
+        if (nowMs - lastManualRefreshAtMs < REFRESH_CLICK_COOLDOWN_MS) return;
+        lastManualRefreshAtMs = nowMs;
+
         var svg = btnRefresh.querySelector('svg');
-        svg.style.transition = 'transform 0.5s ease';
-        svg.style.transform = 'rotate(360deg)';
-        setTimeout(function () { svg.style.transition = 'none'; svg.style.transform = ''; }, 500);
-        loadMetalPrices();
+        if (svg) {
+            svg.style.transition = 'transform 0.5s ease';
+            svg.style.transform = 'rotate(360deg)';
+            setTimeout(function () { svg.style.transition = 'none'; svg.style.transform = ''; }, 500);
+        }
+        loadMetalPrices({ manual: true });
     });
 
     btnPrint.addEventListener('click', function () { window.print(); });

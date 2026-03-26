@@ -280,7 +280,7 @@
             return;
         }
 
-        lastSellSpot = parseFloat(String(gold.sell.spot_g));
+        lastSellSpot = parseFloat(String(gold.sell.kg));
 
         priceCells.forEach(function (cell) {
             applyCellPrice(cell, lastSellSpot);

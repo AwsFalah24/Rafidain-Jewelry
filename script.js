@@ -28,25 +28,13 @@
     var BAR_STORAGE_KEY = 'rafidain_bar_formulas';
     var SESSION_KEY = 'rafidain_logged_in';
     var ROLE_KEY = 'rafidain_role';
-    var DEFAULT_USERS = [
-        { user: 'Admin', pass: '1729', role: 'admin' },
-        { user: 'r', pass: 'r', role: 'viewer' }
-    ];
     var USERS = [];
 
-    // Sync users from Firebase (and initialize if empty)
+    // Sync users securely from Firebase
     db.ref('users').on('value', function (snapshot) {
         var data = snapshot.val();
         if (data && Array.isArray(data)) {
-            // Auto-upgrade old Hassan account to Admin
-            if (data[0] && data[0].user === 'Hassan') {
-                data[0] = { user: 'Admin', pass: '1729', role: 'admin' };
-                db.ref('users').set(data); // Save the fix to Firebase
-            }
             USERS = data;
-        } else {
-            USERS = DEFAULT_USERS;
-            db.ref('users').set(DEFAULT_USERS);
         }
     });
     var currentRole = '';

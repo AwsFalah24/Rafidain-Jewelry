@@ -700,8 +700,21 @@ body.role-viewer .bar-price {
 }
 
 /* =========================
-   RESPONSIVE
+   HIGHLIGHT FOR 1 OZ BAR
    ========================= */
+.bars-card tr.highlight {
+    background: rgba(255, 215, 0, 0.15);
+    /* subtle gold tint */
+    border-left: 4px solid var(--gold-500);
+    border-radius: 4px;
+}
+
+/* Ensure the entire 1 oz row is highlighted */
+.bars-card tr.highlight td {
+    background: rgba(255, 215, 0, 0.15) !important;
+    border-left: 4px solid var(--gold-500);
+}
+
 @media (max-width: 768px) {
     .header-inner {
         padding: 10px 16px;

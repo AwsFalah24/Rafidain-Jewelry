@@ -26,7 +26,7 @@
     var indicator = document.getElementById('cell-indicator');
     var btnRefresh = document.getElementById('btn-refresh');
     var btnPrint = document.getElementById('btn-print');
-    var cells = document.querySelectorAll('.cell');
+    var priceCells = document.querySelectorAll('.cell.price');
 
     // --- Gold spot (CAD/g) from xau.ca — same value per karat column until you add karat formulas ---
     function formatCadPerGram(spotStr) {
@@ -81,7 +81,7 @@
         var buyG = formatCadPerGram(gold.buy.spot_g);
         var baseG = sellG;
 
-        cells.forEach(function (cell) {
+        priceCells.forEach(function (cell) {
             var row = cell.dataset.row;
             var text = baseG;
             if (row === 'sell') text = sellG;

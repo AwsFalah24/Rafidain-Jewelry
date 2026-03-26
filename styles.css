@@ -278,17 +278,17 @@ body {
     width: 170px;
     min-width: 170px;
     background: var(--maroon-700);
-    padding: 22px 24px;
+    padding: 14px 12px;
     border-bottom: 2px solid var(--gold-500);
 }
 
 .col-head {
     background: var(--maroon-700);
     color: var(--gold-300);
-    font-size: 1.15rem;
+    font-size: 1rem;
     font-weight: 700;
     text-align: center;
-    padding: 22px 20px;
+    padding: 14px 12px;
     letter-spacing: 0.5px;
     border-bottom: 2px solid var(--gold-500);
     border-left: 1px solid rgba(255, 255, 255, 0.06);
@@ -299,10 +299,10 @@ body {
 .row-label {
     width: 170px;
     min-width: 170px;
-    font-size: 1rem;
+    font-size: 0.95rem;
     font-weight: 600;
     color: var(--maroon-600);
-    padding: 22px 24px;
+    padding: 14px 12px;
     background: var(--gray-50);
     border-bottom: 1px solid var(--gray-100);
     border-right: 1px solid var(--gray-100);
@@ -313,9 +313,9 @@ body {
 
 /* --- Cells --- */
 .cell {
-    padding: 22px 20px;
+    padding: 12px 8px;
     text-align: center;
-    font-size: 1rem;
+    font-size: 0.95rem;
     font-weight: 500;
     color: var(--gray-800);
     background: var(--white);
@@ -323,7 +323,7 @@ body {
     border-right: 1px solid var(--gray-100);
     cursor: default;
     transition: all 0.15s ease;
-    min-height: 60px;
+    min-height: 42px;
     font-variant-numeric: tabular-nums;
 }
 
@@ -348,9 +348,13 @@ tbody tr:not(.divider-row):hover .row-label {
 /* --- Divider rows --- */
 .divider-row td {
     padding: 0;
-    height: 8px;
+    height: 6px;
     background: var(--gray-50);
     border: none;
+}
+
+.sheet-sublabel {
+    font-weight: 700;
 }
 
 .divider-line {

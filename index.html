@@ -43,7 +43,7 @@
         <!-- Toolbar -->
         <div class="toolbar">
             <div class="toolbar-left">
-                <h2 class="toolbar-title">Gold Pricing Sheet</h2>
+                <h2 class="toolbar-title">Gold Pricing Sheet (Per Gram)</h2>
             </div>
             <div class="toolbar-right">
                 <button class="toolbar-btn" id="btn-refresh" title="Refresh">
@@ -71,6 +71,7 @@
                 <thead>
                     <tr>
                         <th class="corner-cell"></th>
+                        <th class="col-head">24K</th>
                         <th class="col-head">22K</th>
                         <th class="col-head">21K</th>
                         <th class="col-head">18K</th>
@@ -81,58 +82,65 @@
                 <tbody>
                     <tr data-row="sell">
                         <td class="row-label">Sell</td>
-                        <td class="cell" data-row="sell" data-col="22K"></td>
-                        <td class="cell" data-row="sell" data-col="21K"></td>
-                        <td class="cell" data-row="sell" data-col="18K"></td>
-                        <td class="cell" data-row="sell" data-col="14K"></td>
-                        <td class="cell" data-row="sell" data-col="10K"></td>
+                        <td class="cell sheet-blank" data-row="sell" data-col="24K"></td>
+                        <td class="cell price" data-row="sell" data-col="22K"></td>
+                        <td class="cell price" data-row="sell" data-col="21K"></td>
+                        <td class="cell price" data-row="sell" data-col="18K"></td>
+                        <td class="cell price" data-row="sell" data-col="14K"></td>
+                        <td class="cell price" data-row="sell" data-col="10K"></td>
                     </tr>
                     <tr data-row="buy">
                         <td class="row-label">Buy</td>
-                        <td class="cell" data-row="buy" data-col="22K"></td>
-                        <td class="cell" data-row="buy" data-col="21K"></td>
-                        <td class="cell" data-row="buy" data-col="18K"></td>
-                        <td class="cell" data-row="buy" data-col="14K"></td>
-                        <td class="cell" data-row="buy" data-col="10K"></td>
+                        <td class="cell price" data-row="buy" data-col="24K"></td>
+                        <td class="cell price" data-row="buy" data-col="22K"></td>
+                        <td class="cell price" data-row="buy" data-col="21K"></td>
+                        <td class="cell price" data-row="buy" data-col="18K"></td>
+                        <td class="cell price" data-row="buy" data-col="14K"></td>
+                        <td class="cell price" data-row="buy" data-col="10K"></td>
                     </tr>
                     <tr class="divider-row">
-                        <td colspan="6">
+                        <td colspan="7">
                             <div class="divider-line"></div>
                         </td>
                     </tr>
                     <tr data-row="preowned">
                         <td class="row-label">Pre-owned</td>
-                        <td class="cell" data-row="preowned" data-col="22K"></td>
-                        <td class="cell" data-row="preowned" data-col="21K"></td>
-                        <td class="cell" data-row="preowned" data-col="18K"></td>
-                        <td class="cell" data-row="preowned" data-col="14K"></td>
-                        <td class="cell" data-row="preowned" data-col="10K"></td>
+                        <td class="cell sheet-blank" data-row="preowned" data-col="24K"></td>
+                        <td class="cell price" data-row="preowned" data-col="22K"></td>
+                        <td class="cell price" data-row="preowned" data-col="21K"></td>
+                        <td class="cell price" data-row="preowned" data-col="18K"></td>
+                        <td class="cell price" data-row="preowned" data-col="14K"></td>
+                        <td class="cell price" data-row="preowned" data-col="10K"></td>
                     </tr>
                     <tr class="divider-row">
-                        <td colspan="6">
+                        <td colspan="7">
                             <div class="divider-line"></div>
                         </td>
                     </tr>
                     <tr data-row="lira">
                         <td class="row-label">Lira</td>
-                        <td class="cell" data-row="lira" data-col="22K"></td>
-                        <td class="cell" data-row="lira" data-col="21K"></td>
-                        <td class="cell" data-row="lira" data-col="18K"></td>
-                        <td class="cell" data-row="lira" data-col="14K"></td>
-                        <td class="cell" data-row="lira" data-col="10K"></td>
+                        <td class="cell sheet-blank" data-row="lira" data-col="24K"></td>
+                        <td class="cell price" data-row="lira" data-col="22K"></td>
+                        <td class="cell price" data-row="lira" data-col="21K"></td>
+                        <td class="cell sheet-blank" colspan="3"></td>
                     </tr>
                     <tr class="divider-row">
-                        <td colspan="6">
+                        <td colspan="7">
                             <div class="divider-line"></div>
                         </td>
                     </tr>
                     <tr data-row="braided">
-                        <td class="row-label">Braided Bangle</td>
-                        <td class="cell" data-row="braided" data-col="22K"></td>
-                        <td class="cell" data-row="braided" data-col="21K"></td>
-                        <td class="cell" data-row="braided" data-col="18K"></td>
-                        <td class="cell" data-row="braided" data-col="14K"></td>
-                        <td class="cell" data-row="braided" data-col="10K"></td>
+                        <td class="row-label" rowspan="2">Braided Bangle</td>
+                        <td class="cell sheet-sublabel" data-row="braided" data-col="24K" data-band="1-2">1-2 pcs</td>
+                        <td class="cell price" data-row="braided" data-col="22K" data-band="1-2"></td>
+                        <td class="cell price" data-row="braided" data-col="21K" data-band="1-2"></td>
+                        <td class="cell sheet-blank" colspan="3"></td>
+                    </tr>
+                    <tr data-row="braided">
+                        <td class="cell sheet-sublabel" data-row="braided" data-col="24K" data-band="3-6">3-6 pcs</td>
+                        <td class="cell price" data-row="braided" data-col="22K" data-band="3-6"></td>
+                        <td class="cell price" data-row="braided" data-col="21K" data-band="3-6"></td>
+                        <td class="cell sheet-blank" colspan="3"></td>
                     </tr>
                 </tbody>
             </table>

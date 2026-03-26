@@ -29,7 +29,7 @@
     var SESSION_KEY = 'rafidain_logged_in';
     var ROLE_KEY = 'rafidain_role';
     var DEFAULT_USERS = [
-        { user: 'Hassan', pass: 'goldshopprice123', role: 'admin' },
+        { user: 'Admin', pass: '1729', role: 'admin' },
         { user: 'r', pass: 'r', role: 'viewer' }
     ];
     var USERS = [];

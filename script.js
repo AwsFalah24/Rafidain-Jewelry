@@ -8,9 +8,11 @@
     var METAL_PRICES_URL = 'https://www.xau.ca/apps/api/metalprices/CAD';
     var AUTO_REFRESH_MS = 5 * 60 * 1000;
     var REFRESH_CLICK_COOLDOWN_MS = 2000;
+    var STORAGE_KEY = 'rafidain_offsets';
     var latestApiUpdateMs = 0;
     var isRefreshing = false;
     var lastManualRefreshAtMs = 0;
+    var lastSellSpot = NaN;
 
     /** Mon–Sat, 10:00–17:59 (local time on this device). */
     function isBusinessHoursActive(date) {
@@ -28,7 +30,7 @@
     var btnPrint = document.getElementById('btn-print');
     var priceCells = document.querySelectorAll('.cell.price');
 
-    // --- Gold spot (CAD/g) from xau.ca — same value per karat column until you add karat formulas ---
+    // --- Gold spot (CAD/g) from xau.ca ---
     function formatCadPerGram(spotStr) {
         var n = parseFloat(String(spotStr));
         if (isNaN(n)) return '';
@@ -68,51 +70,80 @@
             });
     }
 
-    // --- Sell-row karat offsets from 24K spot price ---
-    var SELL_OFFSETS = {
-        '22K': 39,
-        '21K': 36,
-        '18K': 17,
-        '14K': -40,
-        '10K': -60
+    // =========================================
+    //  UNIFIED OFFSETS (defaults + localStorage)
+    // =========================================
+    var DEFAULT_OFFSETS = {
+        'sell|22K': 39,
+        'sell|21K': 36,
+        'sell|18K': 17,
+        'sell|14K': -40,
+        'sell|10K': -60,
+        'buy|24K': -30,
+        'buy|22K': -48,
+        'buy|21K': -55,
+        'buy|18K': -76,
+        'buy|14K': -97,
+        'buy|10K': -137,
+        'preowned|22K': 10,
+        'preowned|21K': 6,
+        'preowned|18K': -15,
+        'preowned|14K': -50,
+        'preowned|10K': -107,
+        'lira|22K': 8,
+        'lira|21K': 5,
+        'braided|22K|1-2': 21,
+        'braided|21K|1-2': 22,
+        'braided|22K|3-6': 17,
+        'braided|21K|3-6': 10
     };
 
-    // --- Buy-row karat offsets from 24K spot price ---
-    var BUY_OFFSETS = {
-        '24K': -30,
-        '22K': -48,
-        '21K': -55,
-        '18K': -76,
-        '14K': -97,
-        '10K': -137
-    };
+    // Merge defaults with any saved overrides
+    var OFFSETS = {};
+    (function initOffsets() {
+        var key;
+        for (key in DEFAULT_OFFSETS) {
+            OFFSETS[key] = DEFAULT_OFFSETS[key];
+        }
+        try {
+            var saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+            if (saved && typeof saved === 'object') {
+                for (key in saved) {
+                    if (typeof saved[key] === 'number') {
+                        OFFSETS[key] = saved[key];
+                    }
+                }
+            }
+        } catch (e) { /* ignore */ }
+    })();
 
-    // --- Pre-owned row karat offsets from 24K spot price ---
-    var PREOWNED_OFFSETS = {
-        '22K': 10,
-        '21K': 6,
-        '18K': -15,
-        '14K': -50,
-        '10K': -107
-    };
+    function saveOffsets() {
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(OFFSETS)); } catch (e) { /* ignore */ }
+    }
 
-    // --- Lira row karat offsets from 24K spot price ---
-    var LIRA_OFFSETS = {
-        '22K': 8,
-        '21K': 5
-    };
+    /** Build the offset key for a cell */
+    function cellKey(row, col, band) {
+        if (band) return row + '|' + col + '|' + band;
+        return row + '|' + col;
+    }
 
-    // --- Braided Bangle 1-2 pcs offsets from 24K spot price ---
-    var BRAIDED_1_2_OFFSETS = {
-        '22K': 21,
-        '21K': 22
-    };
+    /** Get offset for a cell (or undefined if none) */
+    function getOffset(row, col, band) {
+        return OFFSETS[cellKey(row, col, band)];
+    }
 
-    // --- Braided Bangle 3-6 pcs offsets from 24K spot price ---
-    var BRAIDED_3_6_OFFSETS = {
-        '22K': 17,
-        '21K': 10
-    };
+    // =========================================
+    //  APPLY PRICES
+    // =========================================
+    function applyCellPrice(cell, sellSpot) {
+        var row = cell.dataset.row;
+        var col = cell.dataset.col;
+        var band = cell.dataset.band || '';
+        var offset = getOffset(row, col, band);
+        if (offset !== undefined && !isNaN(sellSpot)) {
+            cell.textContent = formatCadPerGram(sellSpot + offset);
+        }
+    }
 
     function applyGoldSpotPrices(result) {
         var data = result && result.data;
@@ -123,58 +154,10 @@
             return;
         }
 
-        var sellSpot = parseFloat(String(gold.sell.spot_g));
-        var buySpot = parseFloat(String(gold.buy.spot_g));
+        lastSellSpot = parseFloat(String(gold.sell.spot_g));
 
         priceCells.forEach(function (cell) {
-            var row = cell.dataset.row;
-            var col = cell.dataset.col;
-
-            if (row === 'sell') {
-                // Apply sell formula: spot + offset per karat
-                var offset = SELL_OFFSETS[col];
-                if (offset !== undefined && !isNaN(sellSpot)) {
-                    cell.textContent = formatCadPerGram(sellSpot + offset);
-                }
-            } else if (row === 'buy') {
-                // Apply buy formula: spot + offset per karat
-                var buyOffset = BUY_OFFSETS[col];
-                if (buyOffset !== undefined && !isNaN(sellSpot)) {
-                    cell.textContent = formatCadPerGram(sellSpot + buyOffset);
-                }
-            } else if (row === 'preowned') {
-                // Apply pre-owned formula: spot + offset per karat
-                var preownedOffset = PREOWNED_OFFSETS[col];
-                if (preownedOffset !== undefined && !isNaN(sellSpot)) {
-                    cell.textContent = formatCadPerGram(sellSpot + preownedOffset);
-                }
-            } else if (row === 'lira') {
-                // Apply lira formula: spot + offset per karat
-                var liraOffset = LIRA_OFFSETS[col];
-                if (liraOffset !== undefined && !isNaN(sellSpot)) {
-                    cell.textContent = formatCadPerGram(sellSpot + liraOffset);
-                }
-            } else if (row === 'braided') {
-                var band = cell.dataset.band;
-                if (band === '1-2') {
-                    // Apply braided 1-2 pcs formula
-                    var b12Offset = BRAIDED_1_2_OFFSETS[col];
-                    if (b12Offset !== undefined && !isNaN(sellSpot)) {
-                        cell.textContent = formatCadPerGram(sellSpot + b12Offset);
-                    }
-                } else if (band === '3-6') {
-                    // Apply braided 3-6 pcs formula
-                    var b36Offset = BRAIDED_3_6_OFFSETS[col];
-                    if (b36Offset !== undefined && !isNaN(sellSpot)) {
-                        cell.textContent = formatCadPerGram(sellSpot + b36Offset);
-                    }
-                }
-            } else {
-                // Other rows: show sell spot as base for now
-                if (!isNaN(sellSpot)) {
-                    cell.textContent = formatCadPerGram(sellSpot);
-                }
-            }
+            applyCellPrice(cell, lastSellSpot);
         });
 
         var updated = data.rates && data.rates.lastUpdate;
@@ -229,6 +212,151 @@
         loadMetalPrices();
     }
 
+    // =========================================
+    //  FORMULA EDITOR POPUP
+    // =========================================
+    var activePopup = null;
+
+    function closePopup() {
+        if (activePopup) {
+            activePopup.overlay.remove();
+            activePopup = null;
+        }
+    }
+
+    function buildLabel(row, col, band) {
+        var rowNames = {
+            sell: 'Sell', buy: 'Buy', preowned: 'Pre-owned',
+            lira: 'Lira', braided: 'Braided Bangle'
+        };
+        var label = (rowNames[row] || row) + ' · ' + col;
+        if (band) label += ' (' + band + ' pcs)';
+        return label;
+    }
+
+    function openPopup(cell) {
+        closePopup();
+
+        var row = cell.dataset.row;
+        var col = cell.dataset.col;
+        var band = cell.dataset.band || '';
+        var key = cellKey(row, col, band);
+        var currentOffset = OFFSETS[key];
+        if (currentOffset === undefined) return; // no formula for this cell
+
+        // Overlay
+        var overlay = document.createElement('div');
+        overlay.className = 'formula-popup-overlay';
+
+        // Popup card
+        var popup = document.createElement('div');
+        popup.className = 'formula-popup';
+
+        // Title
+        var title = document.createElement('div');
+        title.className = 'formula-popup-title';
+        title.textContent = buildLabel(row, col, band);
+        popup.appendChild(title);
+
+        // Description
+        var desc = document.createElement('div');
+        desc.className = 'formula-popup-desc';
+        desc.textContent = 'Offset from 24K gold price (CAD/g)';
+        popup.appendChild(desc);
+
+        // Input row
+        var inputRow = document.createElement('div');
+        inputRow.className = 'formula-popup-input-row';
+
+        var prefix = document.createElement('span');
+        prefix.className = 'formula-popup-prefix';
+        prefix.textContent = 'Gold Price';
+        inputRow.appendChild(prefix);
+
+        var sign = document.createElement('span');
+        sign.className = 'formula-popup-sign';
+        sign.textContent = currentOffset >= 0 ? '+' : '−';
+        inputRow.appendChild(sign);
+
+        var input = document.createElement('input');
+        input.type = 'number';
+        input.className = 'formula-popup-input';
+        input.value = Math.abs(currentOffset);
+        input.step = '1';
+        inputRow.appendChild(input);
+
+        popup.appendChild(inputRow);
+
+        // Toggle sign on click
+        sign.addEventListener('click', function () {
+            if (sign.textContent === '+') {
+                sign.textContent = '−';
+            } else {
+                sign.textContent = '+';
+            }
+        });
+
+        // Preview
+        var preview = document.createElement('div');
+        preview.className = 'formula-popup-preview';
+        function updatePreview() {
+            if (isNaN(lastSellSpot)) { preview.textContent = ''; return; }
+            var val = parseFloat(input.value) || 0;
+            var off = sign.textContent === '+' ? val : -val;
+            preview.textContent = 'Result: ' + formatCadPerGram(lastSellSpot + off);
+        }
+        input.addEventListener('input', updatePreview);
+        sign.addEventListener('click', updatePreview);
+        updatePreview();
+        popup.appendChild(preview);
+
+        // Buttons
+        var btnRow = document.createElement('div');
+        btnRow.className = 'formula-popup-btns';
+
+        var btnCancel = document.createElement('button');
+        btnCancel.className = 'formula-popup-btn cancel';
+        btnCancel.textContent = 'Cancel';
+        btnCancel.addEventListener('click', closePopup);
+
+        var btnSave = document.createElement('button');
+        btnSave.className = 'formula-popup-btn save';
+        btnSave.textContent = 'Save';
+        btnSave.addEventListener('click', function () {
+            var val = parseFloat(input.value) || 0;
+            var newOffset = sign.textContent === '+' ? val : -val;
+            OFFSETS[key] = newOffset;
+            saveOffsets();
+            applyCellPrice(cell, lastSellSpot);
+            closePopup();
+        });
+
+        btnRow.appendChild(btnCancel);
+        btnRow.appendChild(btnSave);
+        popup.appendChild(btnRow);
+
+        overlay.appendChild(popup);
+        document.body.appendChild(overlay);
+
+        // Focus input
+        input.focus();
+        input.select();
+
+        // Close on overlay click
+        overlay.addEventListener('click', function (e) {
+            if (e.target === overlay) closePopup();
+        });
+
+        // Close on Escape
+        function onKey(e) {
+            if (e.key === 'Escape') { closePopup(); document.removeEventListener('keydown', onKey); }
+            if (e.key === 'Enter') { btnSave.click(); document.removeEventListener('keydown', onKey); }
+        }
+        document.addEventListener('keydown', onKey);
+
+        activePopup = { overlay: overlay, cleanup: function () { document.removeEventListener('keydown', onKey); } };
+    }
+
     // --- Clock ---
     function tick() {
         var now = new Date();
@@ -254,6 +382,13 @@
     });
 
     btnPrint.addEventListener('click', function () { window.print(); });
+
+    // --- Price cell click → formula editor ---
+    priceCells.forEach(function (cell) {
+        cell.addEventListener('click', function () {
+            openPopup(cell);
+        });
+    });
 
     // --- Row entrance ---
     var rows = document.querySelectorAll('tbody tr:not(.divider-row)');

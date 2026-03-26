@@ -323,6 +323,10 @@ body {
     border-right: 1px solid var(--gray-100);
     cursor: default;
     transition: all 0.15s ease;
+}
+
+.cell.price {
+    cursor: pointer;
     min-height: 42px;
     font-variant-numeric: tabular-nums;
 }
@@ -536,5 +540,196 @@ tbody tr:not(.divider-row):hover .row-label {
     .corner-cell {
         print-color-adjust: exact;
         -webkit-print-color-adjust: exact;
+    }
+}
+
+/* =========================
+   FORMULA EDITOR POPUP
+   ========================= */
+.formula-popup-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: rgba(28, 22, 18, 0.45);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: popupFadeIn 0.2s ease;
+}
+
+@keyframes popupFadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.formula-popup {
+    background: var(--white);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--r-lg);
+    box-shadow: 0 20px 60px rgba(44, 24, 16, 0.25), 0 0 0 1px rgba(200, 152, 42, 0.12);
+    padding: 24px 28px;
+    min-width: 320px;
+    max-width: 380px;
+    animation: popupSlideUp 0.25s ease;
+}
+
+@keyframes popupSlideUp {
+    from {
+        opacity: 0;
+        transform: translateY(12px) scale(0.97);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.formula-popup-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--maroon-700);
+    margin-bottom: 4px;
+    letter-spacing: -0.3px;
+}
+
+.formula-popup-desc {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--gray-400);
+    margin-bottom: 18px;
+}
+
+.formula-popup-input-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.formula-popup-prefix {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--gray-600);
+    white-space: nowrap;
+}
+
+.formula-popup-sign {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--maroon-600);
+    background: var(--gold-50);
+    border: 1px solid var(--gold-200);
+    border-radius: var(--r-sm);
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+}
+
+.formula-popup-sign:hover {
+    background: var(--gold-100);
+    border-color: var(--gold-400);
+    color: var(--maroon-700);
+}
+
+.formula-popup-input {
+    flex: 1;
+    height: 40px;
+    padding: 0 12px;
+    font-family: var(--font);
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--gray-900);
+    background: var(--gray-50);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--r-sm);
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    font-variant-numeric: tabular-nums;
+    appearance: textfield;
+    -moz-appearance: textfield;
+}
+
+.formula-popup-input::-webkit-outer-spin-button,
+.formula-popup-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.formula-popup-input:focus {
+    border-color: var(--gold-400);
+    box-shadow: 0 0 0 3px rgba(200, 152, 42, 0.15);
+    background: var(--white);
+}
+
+.formula-popup-preview {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--gold-600);
+    margin-bottom: 20px;
+    padding: 8px 12px;
+    background: var(--gold-50);
+    border-radius: var(--r-sm);
+    border: 1px solid var(--gold-100);
+    font-variant-numeric: tabular-nums;
+}
+
+.formula-popup-btns {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.formula-popup-btn {
+    padding: 8px 20px;
+    font-family: var(--font);
+    font-size: 0.82rem;
+    font-weight: 600;
+    border-radius: var(--r-sm);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+}
+
+.formula-popup-btn.cancel {
+    background: var(--gray-100);
+    color: var(--gray-600);
+}
+
+.formula-popup-btn.cancel:hover {
+    background: var(--gray-200);
+    color: var(--gray-800);
+}
+
+.formula-popup-btn.save {
+    background: var(--maroon-700);
+    color: var(--gold-300);
+}
+
+.formula-popup-btn.save:hover {
+    background: var(--maroon-600);
+    box-shadow: var(--shadow-md);
+}
+
+.formula-popup-btn:active {
+    transform: scale(0.97);
+}
+
+@media print {
+    .formula-popup-overlay {
+        display: none !important;
     }
 }

@@ -203,7 +203,7 @@
         'half-oz': { mult: 15.5, markup: 115 },
         '10g': { mult: 10, markup: 115 },
         '5g': { mult: 5, markup: 100 },
-        '2.5g': { mult: 2.5, markup: 70 },
+        '2-5g': { mult: 2.5, markup: 70 },
         '1g': { mult: 1, markup: 55 }
     };
 
@@ -491,7 +491,7 @@
     // =========================================
     var BAR_LABELS = {
         '100g': '100g', '50g': '50g', '1oz': '1 oz', '20g': '20g',
-        'half-oz': '1/2 oz', '10g': '10g', '5g': '5g', '2.5g': '2.5g', '1g': '1g'
+        'half-oz': '1/2 oz', '10g': '10g', '5g': '5g', '2-5g': '2.5g', '1g': '1g'
     };
 
     function openBarPopup(cell) {

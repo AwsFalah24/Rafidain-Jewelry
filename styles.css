@@ -72,6 +72,190 @@ body {
     min-height: 100vh;
 }
 
+.hidden {
+    display: none !important;
+}
+
+/* =========================
+   LOGIN SCREEN
+   ========================= */
+.login-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    background: var(--maroon-800);
+    background-image:
+        radial-gradient(ellipse at 20% 50%, rgba(200, 152, 42, 0.08) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 30%, rgba(200, 152, 42, 0.06) 0%, transparent 50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: loginFadeIn 0.4s ease;
+}
+
+@keyframes loginFadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.login-card {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: var(--r-lg);
+    padding: 40px 36px;
+    width: 100%;
+    max-width: 380px;
+    text-align: center;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.3);
+    animation: loginSlideUp 0.5s ease 0.1s both;
+}
+
+@keyframes loginSlideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.96);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.login-logo-wrap {
+    width: 72px;
+    height: 72px;
+    margin: 0 auto 16px;
+    border-radius: var(--r-md);
+    overflow: hidden;
+    background: var(--white);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.login-logo {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+}
+
+.login-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--white);
+    letter-spacing: -0.3px;
+    line-height: 1.2;
+    margin-bottom: 2px;
+}
+
+.login-tagline {
+    display: block;
+    font-size: 0.6rem;
+    font-weight: 700;
+    color: var(--gold-400);
+    letter-spacing: 3px;
+    margin-bottom: 32px;
+}
+
+#login-form {
+    text-align: left;
+}
+
+.login-field {
+    margin-bottom: 16px;
+}
+
+.login-label {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--gold-200);
+    margin-bottom: 6px;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+}
+
+.login-input {
+    width: 100%;
+    height: 44px;
+    padding: 0 14px;
+    font-family: var(--font);
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--white);
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: var(--r-sm);
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.login-input::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+}
+
+.login-input:focus {
+    border-color: var(--gold-400);
+    box-shadow: 0 0 0 3px rgba(200, 152, 42, 0.2);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.login-error {
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: #ff6b6b;
+    min-height: 20px;
+    margin-bottom: 8px;
+    text-align: center;
+}
+
+.login-btn {
+    width: 100%;
+    height: 44px;
+    font-family: var(--font);
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--maroon-800);
+    background: linear-gradient(135deg, var(--gold-400), var(--gold-300));
+    border: none;
+    border-radius: var(--r-sm);
+    cursor: pointer;
+    transition: all 0.25s ease;
+    letter-spacing: 0.3px;
+    box-shadow: 0 4px 16px rgba(200, 152, 42, 0.25);
+}
+
+.login-btn:hover {
+    background: linear-gradient(135deg, var(--gold-300), var(--gold-200));
+    box-shadow: 0 6px 24px rgba(200, 152, 42, 0.35);
+    transform: translateY(-1px);
+}
+
+.login-btn:active {
+    transform: translateY(0) scale(0.98);
+}
+
+/* Logout in header */
+#btn-logout {
+    margin-left: 12px;
+    color: var(--gold-100);
+    border-color: rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+#btn-logout:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: var(--gold-400);
+    color: var(--gold-300);
+}
+
 /* =========================
    HEADER
    ========================= */
@@ -365,6 +549,66 @@ tbody tr:not(.divider-row):hover .row-label {
     height: 1px;
     margin: 0 20px;
     background: linear-gradient(90deg, var(--gray-200), var(--gray-100), transparent);
+}
+
+/* =========================
+   GOLD BARS TABLE
+   ========================= */
+.bars-card {
+    margin-top: 20px;
+    animation: fadeUp 0.55s ease 0.12s both;
+}
+
+#bars-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+.bars-header {
+    background: var(--maroon-700);
+    color: var(--gold-300);
+    font-size: 1.05rem;
+    font-weight: 700;
+    text-align: left;
+    padding: 14px 20px;
+    letter-spacing: 0.3px;
+    border-bottom: 2px solid var(--gold-500);
+}
+
+.bar-label {
+    width: 170px;
+    min-width: 170px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--maroon-600);
+    padding: 12px 20px;
+    background: var(--gray-50);
+    border-bottom: 1px solid var(--gray-100);
+    border-right: 1px solid var(--gray-100);
+    white-space: nowrap;
+    user-select: none;
+    transition: background 0.15s ease;
+}
+
+.bar-price {
+    text-align: right;
+    padding: 12px 24px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--gray-800);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.2px;
+    cursor: pointer;
+}
+
+#bars-table tbody tr:hover .bar-label {
+    background: var(--gold-50);
+    color: var(--maroon-700);
+}
+
+#bars-table tbody tr:hover .bar-price {
+    background: rgba(200, 152, 42, 0.03);
 }
 
 /* =========================

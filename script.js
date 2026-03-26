@@ -9,6 +9,10 @@
     var AUTO_REFRESH_MS = 5 * 60 * 1000;
     var REFRESH_CLICK_COOLDOWN_MS = 2000;
     var STORAGE_KEY = 'rafidain_offsets';
+    var BAR_STORAGE_KEY = 'rafidain_bar_formulas';
+    var SESSION_KEY = 'rafidain_logged_in';
+    var VALID_USER = 'Hassan';
+    var VALID_PASS = 'goldshopprice123';
     var latestApiUpdateMs = 0;
     var isRefreshing = false;
     var lastManualRefreshAtMs = 0;
@@ -145,6 +149,69 @@
         }
     }
 
+    // =========================================
+    //  GOLD BARS — 24K FORMULAS
+    // =========================================
+    var DEFAULT_BAR_FORMULAS = {
+        '100g': { mult: 100, markup: 360 },
+        '50g': { mult: 50, markup: 375 },
+        '1oz': { mult: 31.1, markup: 145 },
+        '20g': { mult: 20, markup: 125 },
+        'half-oz': { mult: 15.5, markup: 115 },
+        '10g': { mult: 10, markup: 115 },
+        '5g': { mult: 5, markup: 100 },
+        '2.5g': { mult: 2.5, markup: 70 },
+        '1g': { mult: 1, markup: 55 }
+    };
+
+    // Merge defaults with saved overrides
+    var BAR_FORMULAS = {};
+    (function initBarFormulas() {
+        var key;
+        for (key in DEFAULT_BAR_FORMULAS) {
+            BAR_FORMULAS[key] = { mult: DEFAULT_BAR_FORMULAS[key].mult, markup: DEFAULT_BAR_FORMULAS[key].markup };
+        }
+        try {
+            var saved = JSON.parse(localStorage.getItem(BAR_STORAGE_KEY));
+            if (saved && typeof saved === 'object') {
+                for (key in saved) {
+                    if (saved[key] && typeof saved[key].mult === 'number' && typeof saved[key].markup === 'number') {
+                        BAR_FORMULAS[key] = { mult: saved[key].mult, markup: saved[key].markup };
+                    }
+                }
+            }
+        } catch (e) { /* ignore */ }
+    })();
+
+    function saveBarFormulas() {
+        try { localStorage.setItem(BAR_STORAGE_KEY, JSON.stringify(BAR_FORMULAS)); } catch (e) { /* ignore */ }
+    }
+
+    var barCells = document.querySelectorAll('.bar-price');
+
+    function formatBarPrice(val) {
+        var n = parseFloat(String(val));
+        if (isNaN(n)) return '';
+        var dec = (n % 1 !== 0) ? 2 : 0;
+        return '$' + n.toLocaleString('en-CA', { minimumFractionDigits: dec, maximumFractionDigits: 2 });
+    }
+
+    function applyBarCellPrice(cell, sellSpot) {
+        var barKey = cell.dataset.bar;
+        var formula = BAR_FORMULAS[barKey];
+        if (formula && !isNaN(sellSpot)) {
+            var price = (sellSpot * formula.mult) + formula.markup;
+            cell.textContent = formatBarPrice(price);
+        }
+    }
+
+    function applyBarPrices(sellSpot) {
+        if (isNaN(sellSpot)) return;
+        barCells.forEach(function (cell) {
+            applyBarCellPrice(cell, sellSpot);
+        });
+    }
+
     function applyGoldSpotPrices(result) {
         var data = result && result.data;
         var source = result && result.source ? result.source : 'live';
@@ -159,6 +226,9 @@
         priceCells.forEach(function (cell) {
             applyCellPrice(cell, lastSellSpot);
         });
+
+        // Gold bars
+        applyBarPrices(lastSellSpot);
 
         var updated = data.rates && data.rates.lastUpdate;
         var updatedMs = updated ? Date.parse(updated) : NaN;
@@ -357,6 +427,152 @@
         activePopup = { overlay: overlay, cleanup: function () { document.removeEventListener('keydown', onKey); } };
     }
 
+    // =========================================
+    //  BAR FORMULA EDITOR POPUP
+    // =========================================
+    var BAR_LABELS = {
+        '100g': '100g', '50g': '50g', '1oz': '1 oz', '20g': '20g',
+        'half-oz': '1/2 oz', '10g': '10g', '5g': '5g', '2.5g': '2.5g', '1g': '1g'
+    };
+
+    function openBarPopup(cell) {
+        closePopup();
+
+        var barKey = cell.dataset.bar;
+        var formula = BAR_FORMULAS[barKey];
+        if (!formula) return;
+
+        var currentMult = formula.mult;
+        var currentMarkup = formula.markup;
+
+        // Overlay
+        var overlay = document.createElement('div');
+        overlay.className = 'formula-popup-overlay';
+
+        // Popup card
+        var popup = document.createElement('div');
+        popup.className = 'formula-popup';
+
+        // Title
+        var title = document.createElement('div');
+        title.className = 'formula-popup-title';
+        title.textContent = 'Gold Bar · ' + (BAR_LABELS[barKey] || barKey);
+        popup.appendChild(title);
+
+        // Description
+        var desc = document.createElement('div');
+        desc.className = 'formula-popup-desc';
+        desc.textContent = 'Formula: (Gold Price × Multiplier) + Markup';
+        popup.appendChild(desc);
+
+        // Multiplier row
+        var multRow = document.createElement('div');
+        multRow.className = 'formula-popup-input-row';
+
+        var multLabel = document.createElement('span');
+        multLabel.className = 'formula-popup-prefix';
+        multLabel.textContent = 'Gold Price  ×';
+        multRow.appendChild(multLabel);
+
+        var multInput = document.createElement('input');
+        multInput.type = 'number';
+        multInput.className = 'formula-popup-input';
+        multInput.value = currentMult;
+        multInput.step = '0.1';
+        multRow.appendChild(multInput);
+
+        popup.appendChild(multRow);
+
+        // Markup row
+        var markupRow = document.createElement('div');
+        markupRow.className = 'formula-popup-input-row';
+
+        var markupSign = document.createElement('span');
+        markupSign.className = 'formula-popup-sign';
+        markupSign.textContent = currentMarkup >= 0 ? '+' : '−';
+        markupRow.appendChild(markupSign);
+
+        var markupLabel = document.createElement('span');
+        markupLabel.className = 'formula-popup-prefix';
+        markupLabel.textContent = 'Markup';
+        markupRow.appendChild(markupLabel);
+
+        var markupInput = document.createElement('input');
+        markupInput.type = 'number';
+        markupInput.className = 'formula-popup-input';
+        markupInput.value = Math.abs(currentMarkup);
+        markupInput.step = '1';
+        markupRow.appendChild(markupInput);
+
+        popup.appendChild(markupRow);
+
+        // Toggle markup sign
+        markupSign.addEventListener('click', function () {
+            markupSign.textContent = markupSign.textContent === '+' ? '−' : '+';
+            updateBarPreview();
+        });
+
+        // Preview
+        var preview = document.createElement('div');
+        preview.className = 'formula-popup-preview';
+        function updateBarPreview() {
+            if (isNaN(lastSellSpot)) { preview.textContent = ''; return; }
+            var m = parseFloat(multInput.value) || 0;
+            var mk = parseFloat(markupInput.value) || 0;
+            if (markupSign.textContent === '−') mk = -mk;
+            var result = (lastSellSpot * m) + mk;
+            preview.textContent = 'Result: ' + formatBarPrice(result);
+        }
+        multInput.addEventListener('input', updateBarPreview);
+        markupInput.addEventListener('input', updateBarPreview);
+        updateBarPreview();
+        popup.appendChild(preview);
+
+        // Buttons
+        var btnRow = document.createElement('div');
+        btnRow.className = 'formula-popup-btns';
+
+        var btnCancel = document.createElement('button');
+        btnCancel.className = 'formula-popup-btn cancel';
+        btnCancel.textContent = 'Cancel';
+        btnCancel.addEventListener('click', closePopup);
+
+        var btnSave = document.createElement('button');
+        btnSave.className = 'formula-popup-btn save';
+        btnSave.textContent = 'Save';
+        btnSave.addEventListener('click', function () {
+            var m = parseFloat(multInput.value) || 0;
+            var mk = parseFloat(markupInput.value) || 0;
+            if (markupSign.textContent === '−') mk = -mk;
+            BAR_FORMULAS[barKey] = { mult: m, markup: mk };
+            saveBarFormulas();
+            applyBarCellPrice(cell, lastSellSpot);
+            closePopup();
+        });
+
+        btnRow.appendChild(btnCancel);
+        btnRow.appendChild(btnSave);
+        popup.appendChild(btnRow);
+
+        overlay.appendChild(popup);
+        document.body.appendChild(overlay);
+
+        multInput.focus();
+        multInput.select();
+
+        overlay.addEventListener('click', function (e) {
+            if (e.target === overlay) closePopup();
+        });
+
+        function onKey(e) {
+            if (e.key === 'Escape') { closePopup(); document.removeEventListener('keydown', onKey); }
+            if (e.key === 'Enter') { btnSave.click(); document.removeEventListener('keydown', onKey); }
+        }
+        document.addEventListener('keydown', onKey);
+
+        activePopup = { overlay: overlay, cleanup: function () { document.removeEventListener('keydown', onKey); } };
+    }
+
     // --- Clock ---
     function tick() {
         var now = new Date();
@@ -390,6 +606,13 @@
         });
     });
 
+    // --- Bar cell click → bar formula editor ---
+    barCells.forEach(function (cell) {
+        cell.addEventListener('click', function () {
+            openBarPopup(cell);
+        });
+    });
+
     // --- Row entrance ---
     var rows = document.querySelectorAll('tbody tr:not(.divider-row)');
     rows.forEach(function (r, i) {
@@ -399,7 +622,58 @@
         setTimeout(function () { r.style.opacity = '1'; r.style.transform = 'translateY(0)'; }, 120 + i * 60);
     });
 
-    loadMetalPrices();
-    setInterval(maybeAutoRefreshMetalPrices, AUTO_REFRESH_MS);
+    // =========================================
+    //  LOGIN / SESSION
+    // =========================================
+    var loginScreen = document.getElementById('login-screen');
+    var loginForm = document.getElementById('login-form');
+    var loginError = document.getElementById('login-error');
+    var loginUsername = document.getElementById('login-username');
+    var loginPassword = document.getElementById('login-password');
+    var mainHeader = document.getElementById('main-header');
+    var mainContent = document.getElementById('main-content');
+    var btnLogout = document.getElementById('btn-logout');
+
+    function showDashboard() {
+        loginScreen.classList.add('hidden');
+        mainHeader.classList.remove('hidden');
+        mainContent.classList.remove('hidden');
+        loadMetalPrices();
+        setInterval(maybeAutoRefreshMetalPrices, AUTO_REFRESH_MS);
+    }
+
+    function showLogin() {
+        loginScreen.classList.remove('hidden');
+        mainHeader.classList.add('hidden');
+        mainContent.classList.add('hidden');
+    }
+
+    // Check session on load
+    if (localStorage.getItem(SESSION_KEY) === 'true') {
+        showDashboard();
+    } else {
+        showLogin();
+    }
+
+    loginForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var user = loginUsername.value.trim();
+        var pass = loginPassword.value;
+
+        if (user === VALID_USER && pass === VALID_PASS) {
+            loginError.textContent = '';
+            localStorage.setItem(SESSION_KEY, 'true');
+            showDashboard();
+        } else {
+            loginError.textContent = 'Invalid username or password';
+            loginPassword.value = '';
+            loginPassword.focus();
+        }
+    });
+
+    btnLogout.addEventListener('click', function () {
+        localStorage.removeItem(SESSION_KEY);
+        location.reload();
+    });
 
 })();

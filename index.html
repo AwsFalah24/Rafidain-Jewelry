@@ -15,8 +15,32 @@
 
 <body>
 
+    <!-- Login Screen -->
+    <div id="login-screen" class="login-screen">
+        <div class="login-card">
+            <div class="login-logo-wrap">
+                <img src="logo-new.png" alt="Rafidain &amp; Co. Logo" class="login-logo">
+            </div>
+            <h1 class="login-title">Rafidain &amp; Co.</h1>
+            <span class="login-tagline">STAY GOLD</span>
+            <form id="login-form" autocomplete="off">
+                <div class="login-field">
+                    <label for="login-username" class="login-label">Username</label>
+                    <input type="text" id="login-username" class="login-input" autocomplete="username" required>
+                </div>
+                <div class="login-field">
+                    <label for="login-password" class="login-label">Password</label>
+                    <input type="password" id="login-password" class="login-input" autocomplete="current-password"
+                        required>
+                </div>
+                <div id="login-error" class="login-error"></div>
+                <button type="submit" class="login-btn">Sign In</button>
+            </form>
+        </div>
+    </div>
+
     <!-- Header -->
-    <header id="main-header">
+    <header id="main-header" class="hidden">
         <div class="header-inner">
             <div class="header-left">
                 <div class="logo-wrap">
@@ -32,13 +56,21 @@
                     <span class="header-time" id="current-time"></span>
                     <span class="header-date" id="current-date"></span>
                 </div>
+                <button class="toolbar-btn" id="btn-logout" title="Logout">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                        <polyline points="16 17 21 12 16 7"></polyline>
+                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                    </svg>
+                </button>
             </div>
         </div>
         <div class="header-gold-line"></div>
     </header>
 
     <!-- Main -->
-    <main id="main-content">
+    <main id="main-content" class="hidden">
 
         <!-- Toolbar -->
         <div class="toolbar">
@@ -141,6 +173,55 @@
                         <td class="cell price" data-row="braided" data-col="22K" data-band="3-6"></td>
                         <td class="cell price" data-row="braided" data-col="21K" data-band="3-6"></td>
                         <td class="cell sheet-blank" colspan="3"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Gold Bars Card -->
+        <div class="table-card bars-card">
+            <table id="bars-table">
+                <thead>
+                    <tr>
+                        <th class="bars-header" colspan="2">Gold Bars — 24K</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="bar-label">100g</td>
+                        <td class="cell bar-price" data-bar="100g"></td>
+                    </tr>
+                    <tr>
+                        <td class="bar-label">50g</td>
+                        <td class="cell bar-price" data-bar="50g"></td>
+                    </tr>
+                    <tr>
+                        <td class="bar-label">1 oz</td>
+                        <td class="cell bar-price" data-bar="1oz"></td>
+                    </tr>
+                    <tr>
+                        <td class="bar-label">20g</td>
+                        <td class="cell bar-price" data-bar="20g"></td>
+                    </tr>
+                    <tr>
+                        <td class="bar-label">1/2 oz</td>
+                        <td class="cell bar-price" data-bar="half-oz"></td>
+                    </tr>
+                    <tr>
+                        <td class="bar-label">10g</td>
+                        <td class="cell bar-price" data-bar="10g"></td>
+                    </tr>
+                    <tr>
+                        <td class="bar-label">5g</td>
+                        <td class="cell bar-price" data-bar="5g"></td>
+                    </tr>
+                    <tr>
+                        <td class="bar-label">2.5g</td>
+                        <td class="cell bar-price" data-bar="2.5g"></td>
+                    </tr>
+                    <tr>
+                        <td class="bar-label">1g</td>
+                        <td class="cell bar-price" data-bar="1g"></td>
                     </tr>
                 </tbody>
             </table>

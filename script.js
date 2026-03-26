@@ -41,7 +41,8 @@
     var latestApiUpdateMs = 0;
     var isRefreshing = false;
     var lastManualRefreshAtMs = 0;
-    var lastSellSpot = NaN;
+    var lastBidSpot = NaN;
+    var lastAskSpot = NaN;
 
     /** Mon–Sat, 10:00–17:59 (local time on this device). */
     function isBusinessHoursActive(date) {
@@ -156,10 +157,10 @@
                     OFFSETS[key] = data[key];
                 }
             }
-            // Recalculate all prices if we have a spot price
-            if (!isNaN(lastSellSpot)) {
+            // Recalculate all prices if we have spot prices
+            if (!isNaN(lastAskSpot) && !isNaN(lastBidSpot)) {
                 priceCells.forEach(function (cell) {
-                    applyCellPrice(cell, lastSellSpot);
+                    applyCellPrice(cell);
                 });
             }
         } else {
@@ -182,13 +183,17 @@
     // =========================================
     //  APPLY PRICES
     // =========================================
-    function applyCellPrice(cell, sellSpot) {
+    function applyCellPrice(cell) {
         var row = cell.dataset.row;
         var col = cell.dataset.col;
         var band = cell.dataset.band || '';
         var offset = getOffset(row, col, band);
-        if (offset !== undefined && !isNaN(sellSpot)) {
-            cell.textContent = formatCadPerGram(sellSpot + offset);
+
+        // Use BID for 'buy' row, ASK for everything else
+        var spot = (row === 'buy') ? lastBidSpot : lastAskSpot;
+
+        if (offset !== undefined && !isNaN(spot)) {
+            cell.textContent = formatCadPerGram(spot + offset);
         }
     }
 
@@ -237,8 +242,8 @@
                 }
             }
             // Recalculate all bar prices if we have a spot price
-            if (!isNaN(lastSellSpot)) {
-                applyBarPrices(lastSellSpot);
+            if (!isNaN(lastAskSpot)) {
+                applyBarPrices(lastAskSpot);
             }
         } else {
             // Initialize missing node in Firebase
@@ -280,14 +285,16 @@
             return;
         }
 
-        lastSellSpot = parseFloat(String(gold.sell.kg));
+        // BID price is gold.sell.kg, ASK price is gold.buy.kg
+        lastBidSpot = parseFloat(String(gold.sell.kg));
+        lastAskSpot = parseFloat(String(gold.buy.kg));
 
         priceCells.forEach(function (cell) {
-            applyCellPrice(cell, lastSellSpot);
+            applyCellPrice(cell);
         });
 
-        // Gold bars
-        applyBarPrices(lastSellSpot);
+        // Gold bars always use Ask price
+        applyBarPrices(lastAskSpot);
 
         var updated = data.rates && data.rates.lastUpdate;
         var updatedMs = updated ? Date.parse(updated) : NaN;
@@ -429,10 +436,11 @@
         var preview = document.createElement('div');
         preview.className = 'formula-popup-preview';
         function updatePreview() {
-            if (isNaN(lastSellSpot)) { preview.textContent = ''; return; }
+            var spot = (row === 'buy') ? lastBidSpot : lastAskSpot;
+            if (isNaN(spot)) { preview.textContent = ''; return; }
             var val = parseFloat(input.value) || 0;
             var off = sign.textContent === '+' ? val : -val;
-            preview.textContent = 'Result: ' + formatCadPerGram(lastSellSpot + off);
+            preview.textContent = 'Result: ' + formatCadPerGram(spot + off);
         }
         input.addEventListener('input', updatePreview);
         sign.addEventListener('click', updatePreview);
@@ -456,7 +464,7 @@
             var newOffset = sign.textContent === '+' ? val : -val;
             OFFSETS[key] = newOffset;
             saveOffsets();
-            applyCellPrice(cell, lastSellSpot);
+            applyCellPrice(cell);
             closePopup();
         });
 
@@ -575,11 +583,11 @@
         var preview = document.createElement('div');
         preview.className = 'formula-popup-preview';
         function updateBarPreview() {
-            if (isNaN(lastSellSpot)) { preview.textContent = ''; return; }
+            if (isNaN(lastAskSpot)) { preview.textContent = ''; return; }
             var m = parseFloat(multInput.value) || 0;
             var mk = parseFloat(markupInput.value) || 0;
             if (markupSign.textContent === '−') mk = -mk;
-            var result = (lastSellSpot * m) + mk;
+            var result = (lastAskSpot * m) + mk;
             preview.textContent = 'Result: ' + formatBarPrice(result);
         }
         multInput.addEventListener('input', updateBarPreview);
@@ -605,7 +613,7 @@
             if (markupSign.textContent === '−') mk = -mk;
             BAR_FORMULAS[barKey] = { mult: m, markup: mk };
             saveBarFormulas();
-            applyBarCellPrice(cell, lastSellSpot);
+            applyBarCellPrice(cell, lastAskSpot);
             closePopup();
         });
 

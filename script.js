@@ -162,6 +162,9 @@
                     applyCellPrice(cell, lastSellSpot);
                 });
             }
+        } else {
+            // Initialize missing node in Firebase
+            db.ref('offsets').set(OFFSETS);
         }
     });
 
@@ -237,6 +240,9 @@
             if (!isNaN(lastSellSpot)) {
                 applyBarPrices(lastSellSpot);
             }
+        } else {
+            // Initialize missing node in Firebase
+            db.ref('barFormulas').set(BAR_FORMULAS);
         }
     });
 

@@ -5,14 +5,34 @@
 (function () {
     'use strict';
 
+    // =========================================
+    //  FIREBASE INIT
+    // =========================================
+    var firebaseConfig = {
+        apiKey: 'AIzaSyBC69pCVJ_dXnuj3P9OdX29e1avszQ18CY',
+        authDomain: 'rafidain-co.firebaseapp.com',
+        databaseURL: 'https://rafidain-co-default-rtdb.firebaseio.com',
+        projectId: 'rafidain-co',
+        storageBucket: 'rafidain-co.firebasestorage.app',
+        messagingSenderId: '991543794539',
+        appId: '1:991543794539:web:3c52bba694f42d1e998a2e',
+        measurementId: 'G-XB1FCF6L8X'
+    };
+    firebase.initializeApp(firebaseConfig);
+    var db = firebase.database();
+
     var METAL_PRICES_URL = 'https://www.xau.ca/apps/api/metalprices/CAD';
     var AUTO_REFRESH_MS = 5 * 60 * 1000;
     var REFRESH_CLICK_COOLDOWN_MS = 2000;
     var STORAGE_KEY = 'rafidain_offsets';
     var BAR_STORAGE_KEY = 'rafidain_bar_formulas';
     var SESSION_KEY = 'rafidain_logged_in';
-    var VALID_USER = 'Hassan';
-    var VALID_PASS = 'goldshopprice123';
+    var ROLE_KEY = 'rafidain_role';
+    var USERS = [
+        { user: 'Hassan', pass: 'goldshopprice123', role: 'admin' },
+        { user: 'r', pass: 'r', role: 'viewer' }
+    ];
+    var currentRole = '';
     var latestApiUpdateMs = 0;
     var isRefreshing = false;
     var lastManualRefreshAtMs = 0;
@@ -75,7 +95,7 @@
     }
 
     // =========================================
-    //  UNIFIED OFFSETS (defaults + localStorage)
+    //  UNIFIED OFFSETS (defaults + Firebase)
     // =========================================
     var DEFAULT_OFFSETS = {
         'sell|22K': 39,
@@ -102,28 +122,43 @@
         'braided|21K|3-6': 10
     };
 
-    // Merge defaults with any saved overrides
+    // Start with defaults
     var OFFSETS = {};
     (function initOffsets() {
         var key;
         for (key in DEFAULT_OFFSETS) {
             OFFSETS[key] = DEFAULT_OFFSETS[key];
         }
-        try {
-            var saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-            if (saved && typeof saved === 'object') {
-                for (key in saved) {
-                    if (typeof saved[key] === 'number') {
-                        OFFSETS[key] = saved[key];
-                    }
-                }
-            }
-        } catch (e) { /* ignore */ }
     })();
 
     function saveOffsets() {
-        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(OFFSETS)); } catch (e) { /* ignore */ }
+        // Save to Firebase (admin only)
+        db.ref('offsets').set(OFFSETS);
     }
+
+    // Listen for real-time offset changes from Firebase
+    db.ref('offsets').on('value', function (snapshot) {
+        var data = snapshot.val();
+        if (data && typeof data === 'object') {
+            var key;
+            // Reset to defaults first
+            for (key in DEFAULT_OFFSETS) {
+                OFFSETS[key] = DEFAULT_OFFSETS[key];
+            }
+            // Apply Firebase overrides
+            for (key in data) {
+                if (typeof data[key] === 'number') {
+                    OFFSETS[key] = data[key];
+                }
+            }
+            // Recalculate all prices if we have a spot price
+            if (!isNaN(lastSellSpot)) {
+                priceCells.forEach(function (cell) {
+                    applyCellPrice(cell, lastSellSpot);
+                });
+            }
+        }
+    });
 
     /** Build the offset key for a cell */
     function cellKey(row, col, band) {
@@ -164,28 +199,41 @@
         '1g': { mult: 1, markup: 55 }
     };
 
-    // Merge defaults with saved overrides
+    // Merge defaults with Firebase
     var BAR_FORMULAS = {};
     (function initBarFormulas() {
         var key;
         for (key in DEFAULT_BAR_FORMULAS) {
             BAR_FORMULAS[key] = { mult: DEFAULT_BAR_FORMULAS[key].mult, markup: DEFAULT_BAR_FORMULAS[key].markup };
         }
-        try {
-            var saved = JSON.parse(localStorage.getItem(BAR_STORAGE_KEY));
-            if (saved && typeof saved === 'object') {
-                for (key in saved) {
-                    if (saved[key] && typeof saved[key].mult === 'number' && typeof saved[key].markup === 'number') {
-                        BAR_FORMULAS[key] = { mult: saved[key].mult, markup: saved[key].markup };
-                    }
-                }
-            }
-        } catch (e) { /* ignore */ }
     })();
 
     function saveBarFormulas() {
-        try { localStorage.setItem(BAR_STORAGE_KEY, JSON.stringify(BAR_FORMULAS)); } catch (e) { /* ignore */ }
+        // Save to Firebase (admin only)
+        db.ref('barFormulas').set(BAR_FORMULAS);
     }
+
+    // Listen for real-time bar formula changes from Firebase
+    db.ref('barFormulas').on('value', function (snapshot) {
+        var data = snapshot.val();
+        if (data && typeof data === 'object') {
+            var key;
+            // Reset to defaults first
+            for (key in DEFAULT_BAR_FORMULAS) {
+                BAR_FORMULAS[key] = { mult: DEFAULT_BAR_FORMULAS[key].mult, markup: DEFAULT_BAR_FORMULAS[key].markup };
+            }
+            // Apply Firebase overrides
+            for (key in data) {
+                if (data[key] && typeof data[key].mult === 'number' && typeof data[key].markup === 'number') {
+                    BAR_FORMULAS[key] = { mult: data[key].mult, markup: data[key].markup };
+                }
+            }
+            // Recalculate all bar prices if we have a spot price
+            if (!isNaN(lastSellSpot)) {
+                applyBarPrices(lastSellSpot);
+            }
+        }
+    });
 
     var barCells = document.querySelectorAll('.bar-price');
 
@@ -462,7 +510,7 @@
         // Description
         var desc = document.createElement('div');
         desc.className = 'formula-popup-desc';
-        desc.textContent = 'Formula: (Gold Price × Multiplier) + Markup';
+        desc.textContent = 'Formula: (Gold Price × Multiplier) + Fee';
         popup.appendChild(desc);
 
         // Multiplier row
@@ -494,7 +542,7 @@
 
         var markupLabel = document.createElement('span');
         markupLabel.className = 'formula-popup-prefix';
-        markupLabel.textContent = 'Markup';
+        markupLabel.textContent = 'Fee';
         markupRow.appendChild(markupLabel);
 
         var markupInput = document.createElement('input');
@@ -599,17 +647,17 @@
 
     btnPrint.addEventListener('click', function () { window.print(); });
 
-    // --- Price cell click → formula editor ---
+    // --- Price cell click → formula editor (admin only) ---
     priceCells.forEach(function (cell) {
         cell.addEventListener('click', function () {
-            openPopup(cell);
+            if (currentRole === 'admin') openPopup(cell);
         });
     });
 
-    // --- Bar cell click → bar formula editor ---
+    // --- Bar cell click → bar formula editor (admin only) ---
     barCells.forEach(function (cell) {
         cell.addEventListener('click', function () {
-            openBarPopup(cell);
+            if (currentRole === 'admin') openBarPopup(cell);
         });
     });
 
@@ -638,6 +686,7 @@
         loginScreen.classList.add('hidden');
         mainHeader.classList.remove('hidden');
         mainContent.classList.remove('hidden');
+        document.body.classList.add('role-' + currentRole);
         loadMetalPrices();
         setInterval(maybeAutoRefreshMetalPrices, AUTO_REFRESH_MS);
     }
@@ -649,7 +698,9 @@
     }
 
     // Check session on load
-    if (localStorage.getItem(SESSION_KEY) === 'true') {
+    var savedRole = localStorage.getItem(ROLE_KEY);
+    if (localStorage.getItem(SESSION_KEY) === 'true' && savedRole) {
+        currentRole = savedRole;
         showDashboard();
     } else {
         showLogin();
@@ -660,9 +711,19 @@
         var user = loginUsername.value.trim();
         var pass = loginPassword.value;
 
-        if (user === VALID_USER && pass === VALID_PASS) {
+        var matched = null;
+        for (var i = 0; i < USERS.length; i++) {
+            if (USERS[i].user === user && USERS[i].pass === pass) {
+                matched = USERS[i];
+                break;
+            }
+        }
+
+        if (matched) {
             loginError.textContent = '';
+            currentRole = matched.role;
             localStorage.setItem(SESSION_KEY, 'true');
+            localStorage.setItem(ROLE_KEY, matched.role);
             showDashboard();
         } else {
             loginError.textContent = 'Invalid username or password';
@@ -673,6 +734,7 @@
 
     btnLogout.addEventListener('click', function () {
         localStorage.removeItem(SESSION_KEY);
+        localStorage.removeItem(ROLE_KEY);
         location.reload();
     });
 

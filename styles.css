@@ -556,6 +556,7 @@ tbody tr:not(.divider-row):hover .row-label {
    ========================= */
 .bars-card {
     margin-top: 20px;
+    max-width: 480px;
     animation: fadeUp 0.55s ease 0.12s both;
 }
 
@@ -688,6 +689,14 @@ tbody tr:not(.divider-row):hover .row-label {
     border-radius: 6px;
     border: 1px solid var(--gray-100);
     font-variant-numeric: tabular-nums;
+}
+
+/* =========================
+   ROLE: VIEWER (no editing)
+   ========================= */
+body.role-viewer .cell.price,
+body.role-viewer .bar-price {
+    cursor: default;
 }
 
 /* =========================

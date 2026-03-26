@@ -68,6 +68,52 @@
             });
     }
 
+    // --- Sell-row karat offsets from 24K spot price ---
+    var SELL_OFFSETS = {
+        '22K': 39,
+        '21K': 36,
+        '18K': 17,
+        '14K': -40,
+        '10K': -60
+    };
+
+    // --- Buy-row karat offsets from 24K spot price ---
+    var BUY_OFFSETS = {
+        '24K': -30,
+        '22K': -48,
+        '21K': -55,
+        '18K': -76,
+        '14K': -97,
+        '10K': -137
+    };
+
+    // --- Pre-owned row karat offsets from 24K spot price ---
+    var PREOWNED_OFFSETS = {
+        '22K': 10,
+        '21K': 6,
+        '18K': -15,
+        '14K': -50,
+        '10K': -107
+    };
+
+    // --- Lira row karat offsets from 24K spot price ---
+    var LIRA_OFFSETS = {
+        '22K': 8,
+        '21K': 5
+    };
+
+    // --- Braided Bangle 1-2 pcs offsets from 24K spot price ---
+    var BRAIDED_1_2_OFFSETS = {
+        '22K': 21,
+        '21K': 22
+    };
+
+    // --- Braided Bangle 3-6 pcs offsets from 24K spot price ---
+    var BRAIDED_3_6_OFFSETS = {
+        '22K': 17,
+        '21K': 10
+    };
+
     function applyGoldSpotPrices(result) {
         var data = result && result.data;
         var source = result && result.source ? result.source : 'live';
@@ -77,16 +123,58 @@
             return;
         }
 
-        var sellG = formatCadPerGram(gold.sell.spot_g);
-        var buyG = formatCadPerGram(gold.buy.spot_g);
-        var baseG = sellG;
+        var sellSpot = parseFloat(String(gold.sell.spot_g));
+        var buySpot = parseFloat(String(gold.buy.spot_g));
 
         priceCells.forEach(function (cell) {
             var row = cell.dataset.row;
-            var text = baseG;
-            if (row === 'sell') text = sellG;
-            else if (row === 'buy') text = buyG;
-            cell.textContent = text;
+            var col = cell.dataset.col;
+
+            if (row === 'sell') {
+                // Apply sell formula: spot + offset per karat
+                var offset = SELL_OFFSETS[col];
+                if (offset !== undefined && !isNaN(sellSpot)) {
+                    cell.textContent = formatCadPerGram(sellSpot + offset);
+                }
+            } else if (row === 'buy') {
+                // Apply buy formula: spot + offset per karat
+                var buyOffset = BUY_OFFSETS[col];
+                if (buyOffset !== undefined && !isNaN(sellSpot)) {
+                    cell.textContent = formatCadPerGram(sellSpot + buyOffset);
+                }
+            } else if (row === 'preowned') {
+                // Apply pre-owned formula: spot + offset per karat
+                var preownedOffset = PREOWNED_OFFSETS[col];
+                if (preownedOffset !== undefined && !isNaN(sellSpot)) {
+                    cell.textContent = formatCadPerGram(sellSpot + preownedOffset);
+                }
+            } else if (row === 'lira') {
+                // Apply lira formula: spot + offset per karat
+                var liraOffset = LIRA_OFFSETS[col];
+                if (liraOffset !== undefined && !isNaN(sellSpot)) {
+                    cell.textContent = formatCadPerGram(sellSpot + liraOffset);
+                }
+            } else if (row === 'braided') {
+                var band = cell.dataset.band;
+                if (band === '1-2') {
+                    // Apply braided 1-2 pcs formula
+                    var b12Offset = BRAIDED_1_2_OFFSETS[col];
+                    if (b12Offset !== undefined && !isNaN(sellSpot)) {
+                        cell.textContent = formatCadPerGram(sellSpot + b12Offset);
+                    }
+                } else if (band === '3-6') {
+                    // Apply braided 3-6 pcs formula
+                    var b36Offset = BRAIDED_3_6_OFFSETS[col];
+                    if (b36Offset !== undefined && !isNaN(sellSpot)) {
+                        cell.textContent = formatCadPerGram(sellSpot + b36Offset);
+                    }
+                }
+            } else {
+                // Other rows: show sell spot as base for now
+                if (!isNaN(sellSpot)) {
+                    cell.textContent = formatCadPerGram(sellSpot);
+                }
+            }
         });
 
         var updated = data.rates && data.rates.lastUpdate;

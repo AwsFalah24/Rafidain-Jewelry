@@ -28,10 +28,22 @@
     var BAR_STORAGE_KEY = 'rafidain_bar_formulas';
     var SESSION_KEY = 'rafidain_logged_in';
     var ROLE_KEY = 'rafidain_role';
-    var USERS = [
+    var DEFAULT_USERS = [
         { user: 'Hassan', pass: 'goldshopprice123', role: 'admin' },
         { user: 'r', pass: 'r', role: 'viewer' }
     ];
+    var USERS = [];
+
+    // Sync users from Firebase (and initialize if empty)
+    db.ref('users').on('value', function (snapshot) {
+        var data = snapshot.val();
+        if (data && Array.isArray(data)) {
+            USERS = data;
+        } else {
+            USERS = DEFAULT_USERS;
+            db.ref('users').set(DEFAULT_USERS);
+        }
+    });
     var currentRole = '';
     var latestApiUpdateMs = 0;
     var isRefreshing = false;

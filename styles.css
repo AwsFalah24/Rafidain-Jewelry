@@ -700,19 +700,29 @@ body.role-viewer .bar-price {
 }
 
 /* =========================
-   HIGHLIGHT FOR 1 OZ BAR
+   1 oz bar — gold frame (full row)
    ========================= */
-.bars-card tr.highlight {
-    background: rgba(255, 215, 0, 0.15);
-    /* subtle gold tint */
-    border-left: 4px solid var(--gold-500);
-    border-radius: 4px;
+#bars-table tr.highlight td {
+    border-top: 5px solid var(--gold-500);
+    border-bottom: 5px solid var(--gold-500);
+    background: var(--gold-50);
 }
 
-/* Ensure the entire 1 oz row is highlighted */
-.bars-card tr.highlight td {
-    background: rgba(255, 215, 0, 0.15) !important;
-    border-left: 4px solid var(--gold-500);
+#bars-table tr.highlight td:first-child {
+    border-left: 5px solid var(--gold-500);
+}
+
+#bars-table tr.highlight td:last-child {
+    border-right: 5px solid var(--gold-500);
+}
+
+#bars-table tbody tr:hover.highlight td {
+    background: var(--gold-50);
+}
+
+#bars-table tbody tr:hover.highlight .bar-label {
+    background: var(--gold-50);
+    color: var(--maroon-600);
 }
 
 @media (max-width: 768px) {

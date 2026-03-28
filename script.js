@@ -60,11 +60,20 @@
     var btnPrint = document.getElementById('btn-print');
     var priceCells = document.querySelectorAll('.cell.price');
 
-    // --- Gold spot (CAD/g) from xau.ca ---
+    var KG_TO_PER_GRAM = 1000;
+
+    /** API fields gold.*.kg are CAD per kg — divide for CAD per gram (grid + gold bars). */
+    function apiKgToPerGram(kgStr) {
+        var n = parseFloat(String(kgStr));
+        if (isNaN(n)) return NaN;
+        return n / KG_TO_PER_GRAM;
+    }
+
+    // --- Gold spot (CAD/g) from xau.ca — API kg ÷ 1000 for per-gram base ---
     function formatCadPerGram(spotStr) {
         var n = parseFloat(String(spotStr));
         if (isNaN(n)) return '';
-        return '$' + n.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 3 });
+        return '$' + n.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
     function withNoCache(url) {
@@ -256,13 +265,13 @@
     function formatBarPrice(val) {
         var n = parseFloat(String(val));
         if (isNaN(n)) return '';
-        var dec = (n % 1 !== 0) ? 2 : 0;
-        return '$' + n.toLocaleString('en-CA', { minimumFractionDigits: dec, maximumFractionDigits: 2 });
+        return '$' + n.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
     function applyBarCellPrice(cell, sellSpot) {
         var barKey = cell.dataset.bar;
         var formula = BAR_FORMULAS[barKey];
+        // sellSpot = ask CAD/g (API gold.buy.kg ÷ KG_TO_PER_GRAM), same base as grid
         if (formula && !isNaN(sellSpot)) {
             var price = (sellSpot * formula.mult) + formula.markup;
             cell.textContent = formatBarPrice(price);
@@ -285,15 +294,15 @@
             return;
         }
 
-        // BID price is gold.sell.kg, ASK price is gold.buy.kg
-        lastBidSpot = parseFloat(String(gold.sell.kg));
-        lastAskSpot = parseFloat(String(gold.buy.kg));
+        // BID price is gold.sell.kg, ASK price is gold.buy.kg (CAD/kg → per gram for grid + bars)
+        lastBidSpot = apiKgToPerGram(gold.sell.kg);
+        lastAskSpot = apiKgToPerGram(gold.buy.kg);
 
         priceCells.forEach(function (cell) {
             applyCellPrice(cell);
         });
 
-        // Gold bars always use Ask price
+        // Gold bars: same per-gram ask as grid (kg ÷ 1000)
         applyBarPrices(lastAskSpot);
 
         var updated = data.rates && data.rates.lastUpdate;
@@ -529,7 +538,7 @@
         // Description
         var desc = document.createElement('div');
         desc.className = 'formula-popup-desc';
-        desc.textContent = 'Formula: (Gold Price × Multiplier) + Fee';
+        desc.textContent = 'Gold price is ask per gram (CAD/g), API kg ÷ 1000. Formula: (Gold Price × Multiplier) + Fee';
         popup.appendChild(desc);
 
         // Multiplier row

@@ -58,7 +58,16 @@
     var indicator = document.getElementById('cell-indicator');
     var btnRefresh = document.getElementById('btn-refresh');
     var btnPrint = document.getElementById('btn-print');
+    var spotPureSellEl = document.getElementById('spot-pure-sell');
+    var spotPureBuyEl = document.getElementById('spot-pure-buy');
+    var spotPureTitleSellEl = document.getElementById('spot-pure-title-sell');
+    var spotPureTitleBuyEl = document.getElementById('spot-pure-title-buy');
     var priceCells = document.querySelectorAll('.cell.price');
+
+    function resetSpotPureCardTitles() {
+        if (spotPureTitleSellEl) spotPureTitleSellEl.textContent = 'Sell';
+        if (spotPureTitleBuyEl) spotPureTitleBuyEl.textContent = 'Buy';
+    }
 
     var KG_TO_PER_GRAM = 1000;
 
@@ -286,17 +295,24 @@
     }
 
     function applyGoldSpotPrices(result) {
+        resetSpotPureCardTitles();
         var data = result && result.data;
         var source = result && result.source ? result.source : 'live';
         var gold = data && data.prices && data.prices.gold;
         if (!gold || !gold.sell || !gold.buy) {
             indicator.textContent = 'Gold prices unavailable';
+            if (spotPureSellEl) spotPureSellEl.textContent = '—';
+            if (spotPureBuyEl) spotPureBuyEl.textContent = '—';
             return;
         }
 
         // BID price is gold.sell.kg, ASK price is gold.buy.kg (CAD/kg → per gram for grid + bars)
         lastBidSpot = apiKgToPerGram(gold.sell.kg);
         lastAskSpot = apiKgToPerGram(gold.buy.kg);
+
+        // Top banners: pure 24K spot only (no formula). Sell = API "you buy" (gold.sell.kg), Buy = API "you sell" (gold.buy.kg).
+        if (spotPureSellEl) spotPureSellEl.textContent = formatCadPerGram(lastBidSpot);
+        if (spotPureBuyEl) spotPureBuyEl.textContent = formatCadPerGram(lastAskSpot);
 
         priceCells.forEach(function (cell) {
             applyCellPrice(cell);
@@ -348,6 +364,8 @@
             .catch(function (err) {
                 indicator.textContent = 'Could not load gold prices';
                 if (err && err.message) indicator.textContent += ' (' + err.message + ')';
+                if (spotPureSellEl) spotPureSellEl.textContent = '—';
+                if (spotPureBuyEl) spotPureBuyEl.textContent = '—';
                 isRefreshing = false;
             });
     }
@@ -710,6 +728,8 @@
     var mainContent = document.getElementById('main-content');
     var btnLogout = document.getElementById('btn-logout');
 
+    resetSpotPureCardTitles();
+
     function showDashboard() {
         loginScreen.classList.add('hidden');
         mainHeader.classList.remove('hidden');
@@ -717,6 +737,7 @@
         document.body.classList.add('role-' + currentRole);
         loadMetalPrices();
         setInterval(maybeAutoRefreshMetalPrices, AUTO_REFRESH_MS);
+        resetSpotPureCardTitles();
     }
 
     function showLogin() {

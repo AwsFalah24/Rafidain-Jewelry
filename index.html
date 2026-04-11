@@ -75,7 +75,7 @@
         <!-- Toolbar -->
         <div class="toolbar">
             <div class="toolbar-left">
-                <h2 class="toolbar-title">Gold Pricing Sheet (Per KG)</h2>
+                <h2 class="toolbar-title">Gold Pricing</h2>
             </div>
             <div class="toolbar-right">
                 <button class="toolbar-btn" id="btn-refresh" title="Refresh">
@@ -94,6 +94,20 @@
                         <rect x="6" y="14" width="12" height="8"></rect>
                     </svg>
                 </button>
+            </div>
+        </div>
+
+        <!-- Pure 24K spot (no formula): API kg ÷ 1000 → CAD/g -->
+        <div class="spot-pure-row" aria-label="Pure gold spot prices">
+            <div class="spot-pure-card">
+                <h3 class="spot-pure-title" id="spot-pure-title-sell">Sell</h3>
+                <p class="spot-pure-value" id="spot-pure-sell">—</p>
+                <p class="spot-pure-unit">24K · CAD/g</p>
+            </div>
+            <div class="spot-pure-card">
+                <h3 class="spot-pure-title" id="spot-pure-title-buy">Buy</h3>
+                <p class="spot-pure-value" id="spot-pure-buy">—</p>
+                <p class="spot-pure-unit">24K · CAD/g</p>
             </div>
         </div>
 

@@ -13,6 +13,7 @@
     --maroon-500: #7B3014;
     --maroon-400: #9E5A3A;
 
+    --gold-800: #5a4410;
     --gold-700: #7A5C18;
     --gold-600: #A07820;
     --gold-500: #C8982A;
@@ -439,6 +440,47 @@ body {
     transform: scale(0.95);
 }
 
+/* Pure 24K spot row (API kg ÷ 1000, no formula) */
+.spot-pure-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.spot-pure-card {
+    flex: 1 1 200px;
+    max-width: 360px;
+    padding: 16px 20px;
+    background: var(--white);
+    border: 1px solid var(--gray-100);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-md);
+}
+
+.spot-pure-title {
+    margin: 0 0 8px;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--maroon-700);
+    line-height: 1.2;
+}
+
+.spot-pure-value {
+    font-size: 1.65rem;
+    font-weight: 700;
+    color: var(--gray-900);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+}
+
+.spot-pure-unit {
+    margin-top: 4px;
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: var(--gray-500);
+}
+
 /* =========================
    TABLE CARD
    ========================= */
@@ -519,13 +561,69 @@ body {
     border-right: none;
 }
 
+/* Alternating row tint: Sell, Pre-owned, Braided 1–2 — stronger gold + dark gold frame */
+#pricing-table tbody tr[data-row="sell"] td,
+#pricing-table tbody tr[data-row="preowned"] td,
+#pricing-table tbody tr[data-row="braided"]:has([data-band="1-2"]) td {
+    background: var(--gold-200);
+    border-top: 3px solid var(--gold-700);
+    border-bottom: 3px solid var(--gold-700);
+    border-right: 1px solid var(--gold-400);
+    font-weight: 600;
+}
+
+#pricing-table tbody tr[data-row="sell"] td:first-child,
+#pricing-table tbody tr[data-row="preowned"] td:first-child,
+#pricing-table tbody tr[data-row="braided"]:has([data-band="1-2"]) td:first-child {
+    border-left: 3px solid var(--gold-700);
+}
+
+#pricing-table tbody tr[data-row="sell"] td:last-child,
+#pricing-table tbody tr[data-row="preowned"] td:last-child,
+#pricing-table tbody tr[data-row="braided"]:has([data-band="1-2"]) td:last-child {
+    border-right: 3px solid var(--gold-700);
+}
+
+#pricing-table tbody tr[data-row="sell"] td.cell.price,
+#pricing-table tbody tr[data-row="preowned"] td.cell.price,
+#pricing-table tbody tr[data-row="braided"]:has([data-band="1-2"]) td.cell.price {
+    font-weight: 700;
+    color: var(--maroon-800);
+}
+
 .cell:hover {
     background: rgba(200, 152, 42, 0.04);
+}
+
+#pricing-table tbody tr[data-row="sell"] td:hover,
+#pricing-table tbody tr[data-row="preowned"] td:hover,
+#pricing-table tbody tr[data-row="braided"]:has([data-band="1-2"]) td:hover {
+    background: var(--gold-300);
 }
 
 /* Row hover */
 tbody tr:not(.divider-row):hover .cell {
     background: rgba(200, 152, 42, 0.03);
+}
+
+#pricing-table tbody tr[data-row="sell"]:hover td,
+#pricing-table tbody tr[data-row="preowned"]:hover td,
+#pricing-table tbody tr[data-row="braided"]:has([data-band="1-2"]):hover td {
+    background: var(--gold-300);
+    border-top-color: var(--gold-800);
+    border-bottom-color: var(--gold-800);
+}
+
+#pricing-table tbody tr[data-row="sell"]:hover td:first-child,
+#pricing-table tbody tr[data-row="preowned"]:hover td:first-child,
+#pricing-table tbody tr[data-row="braided"]:has([data-band="1-2"]):hover td:first-child {
+    border-left-color: var(--gold-800);
+}
+
+#pricing-table tbody tr[data-row="sell"]:hover td:last-child,
+#pricing-table tbody tr[data-row="preowned"]:hover td:last-child,
+#pricing-table tbody tr[data-row="braided"]:has([data-band="1-2"]):hover td:last-child {
+    border-right-color: var(--gold-800);
 }
 
 tbody tr:not(.divider-row):hover .row-label {

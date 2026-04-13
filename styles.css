@@ -482,6 +482,234 @@ body {
 }
 
 /* =========================
+   CHART + GOLD BARS ROW
+   ========================= */
+.chart-bars-row {
+    display: grid;
+    grid-template-columns: minmax(0, 480px) minmax(0, 1fr);
+    gap: 20px;
+    margin-top: 20px;
+    margin-bottom: 20px;
+    justify-content: stretch;
+    align-items: stretch;
+}
+
+.chart-bars-row .bars-card {
+    margin-top: 0;
+    margin-bottom: 0;
+    width: 100%;
+    min-width: 0;
+    max-width: 480px;
+    animation-delay: 0.12s;
+}
+
+.chart-bars-row .chart-card {
+    margin-top: 0;
+    margin-bottom: 0;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+    animation-delay: 0.1s;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.chart-bars-row .chart-wrap {
+    flex: 1 1 0;
+    min-height: 220px;
+    height: auto;
+}
+
+@media (max-width: 1020px) {
+    .chart-bars-row {
+        grid-template-columns: 1fr;
+    }
+
+    .chart-bars-row .bars-card,
+    .chart-bars-row .chart-card {
+        max-width: none;
+    }
+
+    .chart-bars-row .chart-card {
+        display: block;
+    }
+
+    .chart-bars-row .chart-wrap {
+        flex: none;
+        height: 240px;
+    }
+}
+
+/* =========================
+   PRICE CHART
+   ========================= */
+.chart-card {
+    background: var(--white);
+    border: 1px solid var(--gray-100);
+    border-radius: var(--r-lg);
+    overflow: visible;
+    box-shadow: var(--shadow-lg);
+    margin-bottom: 20px;
+    animation: fadeUp 0.52s ease 0.06s both;
+}
+
+.chart-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px 14px;
+    padding: 14px 20px 12px;
+    background: var(--maroon-700);
+    border-bottom: 2px solid var(--gold-500);
+    border-radius: var(--r-lg) var(--r-lg) 0 0;
+}
+
+.chart-title-group {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    min-width: 0;
+}
+
+.chart-current-price {
+    font-size: 1.25rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    color: var(--gold-200);
+    letter-spacing: -0.3px;
+}
+
+.chart-change {
+    font-size: 0.78rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    padding: 3px 8px;
+    border-radius: 5px;
+}
+
+.chart-change.up {
+    color: #22c55e;
+    background: rgba(34, 197, 94, 0.12);
+}
+
+.chart-change.down {
+    color: #f87171;
+    background: rgba(248, 113, 113, 0.12);
+}
+
+.chart-timeframes {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 4px;
+    max-width: 100%;
+}
+
+.chart-tf {
+    padding: 5px 10px;
+    font-family: var(--font);
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.5);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    letter-spacing: 0.3px;
+}
+
+.chart-tf:hover {
+    color: var(--gold-300);
+    border-color: rgba(218, 165, 32, 0.3);
+    background: rgba(218, 165, 32, 0.08);
+}
+
+.chart-tf.active {
+    color: var(--maroon-800);
+    background: var(--gold-400);
+    border-color: var(--gold-400);
+}
+
+.chart-wrap {
+    position: relative;
+    height: 240px;
+    padding: 16px 28px 8px 16px;
+    border-radius: 0 0 var(--r-lg) var(--r-lg);
+    overflow: hidden;
+    background: var(--white);
+}
+
+#gold-chart-root {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    position: relative;
+    z-index: 1;
+}
+
+.chart-no-data {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    color: var(--gray-400);
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-align: center;
+    padding: 16px;
+}
+
+.chart-no-data svg {
+    opacity: 0.35;
+    color: var(--gold-500);
+}
+
+@media (max-width: 768px) {
+    .chart-wrap {
+        height: 190px;
+        padding: 12px 22px 6px 10px;
+    }
+
+    .chart-bars-row .chart-wrap {
+        height: 190px;
+        flex: none;
+    }
+
+    .chart-header {
+        padding: 12px 14px 10px;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+
+    .chart-timeframes {
+        justify-content: flex-start;
+    }
+
+    .chart-tf {
+        padding: 5px 8px;
+        font-size: 0.7rem;
+    }
+}
+
+@media print {
+    .chart-bars-row .chart-card {
+        display: none;
+    }
+
+    .chart-bars-row .bars-card {
+        max-width: none;
+    }
+}
+
+/* =========================
    TABLE CARD
    ========================= */
 .table-card {
@@ -537,6 +765,16 @@ body {
     transition: background 0.15s ease;
 }
 
+/* Continuation cell when a product label is split across two rows (e.g. Braided Bangle) */
+.row-label-sub {
+    width: 170px;
+    min-width: 170px;
+    padding: 14px 12px;
+    background: var(--gray-50);
+    border-bottom: 1px solid var(--gray-100);
+    border-right: 1px solid var(--gray-100);
+}
+
 /* --- Cells --- */
 .cell {
     padding: 12px 8px;
@@ -561,10 +799,11 @@ body {
     border-right: none;
 }
 
+/* Gold highlight only when the row has at least one filled price cell */
 /* Alternating row tint: Sell, Pre-owned, Braided 1–2 — stronger gold + dark gold frame */
-#pricing-table tbody tr[data-row="sell"] td,
-#pricing-table tbody tr[data-row="preowned"] td,
-#pricing-table tbody tr[data-row="braided"]:has([data-band="1-2"]) td {
+#pricing-table tbody tr[data-row="sell"]:has(td.cell.price:not(:empty)) td,
+#pricing-table tbody tr[data-row="preowned"]:has(td.cell.price:not(:empty)) td,
+#pricing-table tbody tr[data-row="braided"]:has([data-band="1-2"]):has(td.cell.price:not(:empty)) td {
     background: var(--gold-200);
     border-top: 3px solid var(--gold-700);
     border-bottom: 3px solid var(--gold-700);
@@ -572,21 +811,21 @@ body {
     font-weight: 600;
 }
 
-#pricing-table tbody tr[data-row="sell"] td:first-child,
-#pricing-table tbody tr[data-row="preowned"] td:first-child,
-#pricing-table tbody tr[data-row="braided"]:has([data-band="1-2"]) td:first-child {
+#pricing-table tbody tr[data-row="sell"]:has(td.cell.price:not(:empty)) td:first-child,
+#pricing-table tbody tr[data-row="preowned"]:has(td.cell.price:not(:empty)) td:first-child,
+#pricing-table tbody tr[data-row="braided"]:has([data-band="1-2"]):has(td.cell.price:not(:empty)) td:first-child {
     border-left: 3px solid var(--gold-700);
 }
 
-#pricing-table tbody tr[data-row="sell"] td:last-child,
-#pricing-table tbody tr[data-row="preowned"] td:last-child,
-#pricing-table tbody tr[data-row="braided"]:has([data-band="1-2"]) td:last-child {
+#pricing-table tbody tr[data-row="sell"]:has(td.cell.price:not(:empty)) td:last-child,
+#pricing-table tbody tr[data-row="preowned"]:has(td.cell.price:not(:empty)) td:last-child,
+#pricing-table tbody tr[data-row="braided"]:has([data-band="1-2"]):has(td.cell.price:not(:empty)) td:last-child {
     border-right: 3px solid var(--gold-700);
 }
 
-#pricing-table tbody tr[data-row="sell"] td.cell.price,
-#pricing-table tbody tr[data-row="preowned"] td.cell.price,
-#pricing-table tbody tr[data-row="braided"]:has([data-band="1-2"]) td.cell.price {
+#pricing-table tbody tr[data-row="sell"]:has(td.cell.price:not(:empty)) td.cell.price,
+#pricing-table tbody tr[data-row="preowned"]:has(td.cell.price:not(:empty)) td.cell.price,
+#pricing-table tbody tr[data-row="braided"]:has([data-band="1-2"]):has(td.cell.price:not(:empty)) td.cell.price {
     font-weight: 700;
     color: var(--maroon-800);
 }
@@ -595,9 +834,9 @@ body {
     background: rgba(200, 152, 42, 0.04);
 }
 
-#pricing-table tbody tr[data-row="sell"] td:hover,
-#pricing-table tbody tr[data-row="preowned"] td:hover,
-#pricing-table tbody tr[data-row="braided"]:has([data-band="1-2"]) td:hover {
+#pricing-table tbody tr[data-row="sell"]:has(td.cell.price:not(:empty)) td:hover,
+#pricing-table tbody tr[data-row="preowned"]:has(td.cell.price:not(:empty)) td:hover,
+#pricing-table tbody tr[data-row="braided"]:has([data-band="1-2"]):has(td.cell.price:not(:empty)) td:hover {
     background: var(--gold-300);
 }
 
@@ -606,23 +845,56 @@ tbody tr:not(.divider-row):hover .cell {
     background: rgba(200, 152, 42, 0.03);
 }
 
-#pricing-table tbody tr[data-row="sell"]:hover td,
-#pricing-table tbody tr[data-row="preowned"]:hover td,
-#pricing-table tbody tr[data-row="braided"]:has([data-band="1-2"]):hover td {
+#pricing-table tbody tr[data-row="sell"]:has(td.cell.price:not(:empty)):hover td,
+#pricing-table tbody tr[data-row="preowned"]:has(td.cell.price:not(:empty)):hover td,
+#pricing-table tbody tr[data-row="braided"]:has([data-band="1-2"]):has(td.cell.price:not(:empty)):hover td {
     background: var(--gold-300);
     border-top-color: var(--gold-800);
     border-bottom-color: var(--gold-800);
 }
 
-#pricing-table tbody tr[data-row="sell"]:hover td:first-child,
-#pricing-table tbody tr[data-row="preowned"]:hover td:first-child,
-#pricing-table tbody tr[data-row="braided"]:has([data-band="1-2"]):hover td:first-child {
+#pricing-table tbody tr[data-row="sell"]:has(td.cell.price:not(:empty)):hover td:first-child,
+#pricing-table tbody tr[data-row="preowned"]:has(td.cell.price:not(:empty)):hover td:first-child,
+#pricing-table tbody tr[data-row="braided"]:has([data-band="1-2"]):has(td.cell.price:not(:empty)):hover td:first-child {
     border-left-color: var(--gold-800);
 }
 
-#pricing-table tbody tr[data-row="sell"]:hover td:last-child,
-#pricing-table tbody tr[data-row="preowned"]:hover td:last-child,
-#pricing-table tbody tr[data-row="braided"]:has([data-band="1-2"]):hover td:last-child {
+#pricing-table tbody tr[data-row="sell"]:has(td.cell.price:not(:empty)):hover td:last-child,
+#pricing-table tbody tr[data-row="preowned"]:has(td.cell.price:not(:empty)):hover td:last-child,
+#pricing-table tbody tr[data-row="braided"]:has([data-band="1-2"]):has(td.cell.price:not(:empty)):hover td:last-child {
+    border-right-color: var(--gold-800);
+}
+
+/* Braided Bangle: no gold fill on 18K / 14K / 10K (unused columns) */
+#pricing-table tbody tr[data-row="braided"]:has([data-band="1-2"]):has(td.cell.price:not(:empty)) td.cell.sheet-blank[data-col="18K"],
+#pricing-table tbody tr[data-row="braided"]:has([data-band="1-2"]):has(td.cell.price:not(:empty)) td.cell.sheet-blank[data-col="14K"],
+#pricing-table tbody tr[data-row="braided"]:has([data-band="1-2"]):has(td.cell.price:not(:empty)) td.cell.sheet-blank[data-col="10K"] {
+    background: var(--white);
+    font-weight: 500;
+    border-top: 1px solid var(--gray-100);
+    border-bottom: 1px solid var(--gray-100);
+    border-right: 1px solid var(--gray-100);
+}
+
+#pricing-table tbody tr[data-row="braided"]:has([data-band="1-2"]):has(td.cell.price:not(:empty)) td.cell.sheet-blank[data-col="10K"] {
+    border-right: 3px solid var(--gold-700);
+}
+
+#pricing-table tbody tr[data-row="braided"]:has([data-band="1-2"]):has(td.cell.price:not(:empty)) td.cell.sheet-blank[data-col="18K"]:hover,
+#pricing-table tbody tr[data-row="braided"]:has([data-band="1-2"]):has(td.cell.price:not(:empty)) td.cell.sheet-blank[data-col="14K"]:hover,
+#pricing-table tbody tr[data-row="braided"]:has([data-band="1-2"]):has(td.cell.price:not(:empty)) td.cell.sheet-blank[data-col="10K"]:hover {
+    background: var(--gray-50);
+}
+
+#pricing-table tbody tr[data-row="braided"]:has([data-band="1-2"]):has(td.cell.price:not(:empty)):hover td.cell.sheet-blank[data-col="18K"],
+#pricing-table tbody tr[data-row="braided"]:has([data-band="1-2"]):has(td.cell.price:not(:empty)):hover td.cell.sheet-blank[data-col="14K"],
+#pricing-table tbody tr[data-row="braided"]:has([data-band="1-2"]):has(td.cell.price:not(:empty)):hover td.cell.sheet-blank[data-col="10K"] {
+    background: var(--gray-50);
+    border-top-color: var(--gray-100);
+    border-bottom-color: var(--gray-100);
+}
+
+#pricing-table tbody tr[data-row="braided"]:has([data-band="1-2"]):has(td.cell.price:not(:empty)):hover td.cell.sheet-blank[data-col="10K"] {
     border-right-color: var(--gold-800);
 }
 
@@ -717,12 +989,11 @@ tbody tr:not(.divider-row):hover .row-label {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-top: -1px;
+    margin-top: 0;
     padding: 8px 16px;
     background: var(--white);
     border: 1px solid var(--gray-100);
-    border-top: 1px solid var(--gray-100);
-    border-radius: 0 0 var(--r-lg) var(--r-lg);
+    border-radius: var(--r-lg);
     box-shadow: var(--shadow-md);
     animation: fadeUp 0.55s ease 0.16s both;
 }
@@ -801,25 +1072,25 @@ body.role-viewer .bar-price {
    1 oz bar — gold frame (full row)
    ========================= */
 #bars-table tr.highlight td {
-    border-top: 5px solid var(--gold-500);
-    border-bottom: 5px solid var(--gold-500);
-    background: var(--gold-50);
+    border-top: 5px solid var(--gold-600);
+    border-bottom: 5px solid var(--gold-600);
+    background: var(--gold-100);
 }
 
 #bars-table tr.highlight td:first-child {
-    border-left: 5px solid var(--gold-500);
+    border-left: 5px solid var(--gold-600);
 }
 
 #bars-table tr.highlight td:last-child {
-    border-right: 5px solid var(--gold-500);
+    border-right: 5px solid var(--gold-600);
 }
 
 #bars-table tbody tr:hover.highlight td {
-    background: var(--gold-50);
+    background: var(--gold-200);
 }
 
 #bars-table tbody tr:hover.highlight .bar-label {
-    background: var(--gold-50);
+    background: var(--gold-200);
     color: var(--maroon-600);
 }
 
@@ -851,7 +1122,8 @@ body.role-viewer .bar-price {
     }
 
     .corner-cell,
-    .row-label {
+    .row-label,
+    .row-label-sub {
         width: 108px;
         min-width: 108px;
         padding: 12px 12px;
@@ -875,7 +1147,8 @@ body.role-viewer .bar-price {
     }
 
     .corner-cell,
-    .row-label {
+    .row-label,
+    .row-label-sub {
         width: 88px;
         min-width: 88px;
         font-size: 0.73rem;

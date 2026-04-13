@@ -70,6 +70,8 @@
     }
 
     var KG_TO_PER_GRAM = 1000;
+    /** Chart + headline: show gold like equities apps (price per troy oz). Spot CAD/g × oz/g. */
+    var GRAMS_PER_TROY_OZ = 31.1034768;
 
     /** API fields gold.*.kg are CAD per kg — divide for CAD per gram (grid + gold bars). */
     function apiKgToPerGram(kgStr) {
@@ -83,6 +85,18 @@
         var n = parseFloat(String(spotStr));
         if (isNaN(n)) return '';
         return '$' + n.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function formatCadPerOz(ozVal) {
+        var n = parseFloat(String(ozVal));
+        if (isNaN(n)) return '';
+        return '$' + n.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function cadPerGramToOz(cadPerGram) {
+        var g = parseFloat(String(cadPerGram));
+        if (isNaN(g)) return NaN;
+        return g * GRAMS_PER_TROY_OZ;
     }
 
     function withNoCache(url) {
@@ -321,6 +335,26 @@
         // Gold bars: same per-gram ask as grid (kg ÷ 1000)
         applyBarPrices(lastAskSpot);
 
+        // Save price snapshot to Firebase for chart history
+        var snapNow = Date.now();
+        db.ref('priceHistory').push({ t: snapNow, bid: lastBidSpot, ask: lastAskSpot });
+        // Trim entries older than 30 days
+        var cutoff30d = snapNow - (30 * 24 * 60 * 60 * 1000);
+        db.ref('priceHistory').orderByChild('t').endAt(cutoff30d).once('value', function (snap) {
+            var updates = {};
+            snap.forEach(function (child) { updates[child.key] = null; });
+            if (Object.keys(updates).length) db.ref('priceHistory').update(updates);
+        });
+
+        // Chart headline: CAD per troy oz (same order of magnitude as major gold tickers)
+        if (chartPriceEl) {
+            var oz = cadPerGramToOz(lastBidSpot);
+            chartPriceEl.textContent = isNaN(oz) ? '—' : formatCadPerOz(oz);
+        }
+
+        // Re-convert Twelve Data closes with updated spot anchor (no re-fetch needed)
+        updateTwelveLineDataIfPossible();
+
         var updated = data.rates && data.rates.lastUpdate;
         var updatedMs = updated ? Date.parse(updated) : NaN;
         if (!isNaN(updatedMs)) {
@@ -373,6 +407,429 @@
     function maybeAutoRefreshMetalPrices() {
         if (!isBusinessHoursActive()) return;
         loadMetalPrices();
+    }
+
+    // =========================================
+    //  GOLD PRICE CHART (TradingView Lightweight Charts — time scale + line)
+    // =========================================
+    var lwChart = null;
+    var lwSeries = null;
+    var lwSeriesKind = ''; // 'line' when a series is active
+    var lwResizeObserver = null;
+    var lwChartWrap = null;
+    var chartTimeframe = '1D';
+    var CHART_HISTORY_PATH = 'priceHistory';
+    var chartPriceEl = document.getElementById('chart-current-price');
+    /** OHLC from Twelve Data (USD/oz); line uses close only, re-anchored to live CAD/g spot. */
+    var lastTwelveBarsUSD = null;
+    var chartFetchSeq = 0;
+    /** When Twelve Data succeeds for this fetch id, skip Firebase line (avoids stale overwrite). */
+    var chartFirebaseSuppressFetchId = -1;
+
+    /** Rejects after ms milliseconds */
+    function withTimeout(promise, ms) {
+        var timeout = new Promise(function (_, reject) {
+            setTimeout(function () { reject(new Error('timeout')); }, ms);
+        });
+        return Promise.race([promise, timeout]);
+    }
+
+    function getChartCutoffMs(tf) {
+        var now = Date.now();
+        var day = 24 * 60 * 60 * 1000;
+        if (tf === '1D') return now - day;
+        if (tf === '1W') return now - 7 * day;
+        if (tf === '1M') return now - 30 * day;
+        if (tf === '3M') return now - 90 * day;
+        if (tf === '6M') return now - 183 * day;
+        if (tf === '1Y') return now - 365 * day;
+        if (tf === '5Y') return now - 5 * 365 * day;
+        if (tf === 'ALL') return now - 20 * 365 * day;
+        return now - 30 * day;
+    }
+
+    function getLw() {
+        return typeof LightweightCharts !== 'undefined' ? LightweightCharts : null;
+    }
+
+    function destroyLwChart() {
+        if (lwResizeObserver && lwChartWrap) {
+            try { lwResizeObserver.unobserve(lwChartWrap); } catch (e1) { /* ignore */ }
+            try { lwResizeObserver.disconnect(); } catch (e2) { /* ignore */ }
+        }
+        lwResizeObserver = null;
+        lwChartWrap = null;
+        lwSeries = null;
+        lwSeriesKind = '';
+        if (lwChart) {
+            try { lwChart.remove(); } catch (e) { /* ignore */ }
+            lwChart = null;
+        }
+    }
+
+    function mergeLineByTime(rows) {
+        rows.sort(function (a, b) { return a.time - b.time; });
+        var out = [];
+        rows.forEach(function (r) {
+            var prev = out[out.length - 1];
+            if (prev && prev.time === r.time) {
+                prev.value = r.value;
+            } else {
+                out.push({ time: r.time, value: r.value });
+            }
+        });
+        return out;
+    }
+
+    function updateChangeBadgeFromSeries(firstVal, lastVal) {
+        var changeEl = document.getElementById('chart-change');
+        if (!changeEl) return;
+        if (firstVal == null || lastVal == null || isNaN(firstVal) || isNaN(lastVal)) {
+            changeEl.textContent = '';
+            changeEl.className = 'chart-change';
+            return;
+        }
+        var diff = lastVal - firstVal;
+        var pct = firstVal !== 0 ? (diff / firstVal) * 100 : 0;
+        var sign = diff >= 0 ? '+' : '';
+        changeEl.textContent = sign + diff.toLocaleString('en-CA', { maximumFractionDigits: 2, minimumFractionDigits: 2 })
+            + ' (' + sign + pct.toFixed(2) + '%)';
+        changeEl.className = 'chart-change ' + (diff >= 0 ? 'up' : 'down');
+    }
+
+    function attachLwResize(container) {
+        lwChartWrap = container.parentElement;
+        if (!lwChartWrap || typeof ResizeObserver === 'undefined') return;
+        lwResizeObserver = new ResizeObserver(function (entries) {
+            if (!lwChart || !entries.length) return;
+            var cr = entries[0].contentRect;
+            var w = Math.max(0, Math.floor(cr.width));
+            var h = Math.max(0, Math.floor(cr.height));
+            lwChart.applyOptions({ width: w, height: h });
+        });
+        lwResizeObserver.observe(lwChartWrap);
+    }
+
+    /** Lightweight Charts `Time` → `Date` (UTC for business-day objects). */
+    function lwTimeToDate(time) {
+        if (time == null) return null;
+        if (typeof time === 'object' && typeof time.year === 'number') {
+            var h = typeof time.hours === 'number' ? time.hours : 0;
+            var m = typeof time.minutes === 'number' ? time.minutes : 0;
+            var s = typeof time.seconds === 'number' ? time.seconds : 0;
+            return new Date(Date.UTC(time.year, time.month - 1, time.day, h, m, s));
+        }
+        if (typeof time === 'number') {
+            return new Date(time * 1000);
+        }
+        return null;
+    }
+
+    /** Shorter $ labels so the right scale does not clip (axis + crosshair). */
+    function lwPriceFormatter(price) {
+        var n = Number(price);
+        if (isNaN(n)) return '';
+        var rounded = Math.round(n);
+        if (Math.abs(n - rounded) < 0.005 || Math.abs(n) >= 500) {
+            return '$' + rounded.toLocaleString('en-CA');
+        }
+        return '$' + n.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    /** Crosshair / tooltip time line */
+    function lwTimeFormatter(time) {
+        var d = lwTimeToDate(time);
+        if (!d || isNaN(d.getTime())) return '';
+        if (chartTimeframe === '1D') {
+            return d.toLocaleString('en-CA', {
+                weekday: 'short',
+                month: 'short',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
+            });
+        }
+        if (chartTimeframe === '1W') {
+            return d.toLocaleString('en-CA', {
+                month: 'short',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
+            });
+        }
+        return d.toLocaleDateString('en-CA', { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' });
+    }
+
+    /** X-axis tick labels by range */
+    function lwTickMarkFormatter(time, tickMarkType) {
+        try {
+            var d = lwTimeToDate(time);
+            if (!d || isNaN(d.getTime())) return null;
+            var LW = getLw();
+            var TM = LW && LW.TickMarkType;
+            var tf = chartTimeframe;
+
+            if (tf === '1D') {
+                return d.toLocaleString('en-CA', { hour: 'numeric', minute: '2-digit', hour12: true });
+            }
+            if (tf === '1W') {
+                return d.toLocaleString('en-CA', { weekday: 'short', month: 'short', day: 'numeric' });
+            }
+            if (tf === '1M' || tf === '3M' || tf === '6M') {
+                if (TM != null && tickMarkType === TM.Year) {
+                    return d.toLocaleDateString('en-CA', { year: 'numeric' });
+                }
+                return d.toLocaleDateString('en-CA', { month: 'short', day: 'numeric' });
+            }
+            if (tf === '1Y' || tf === '5Y' || tf === 'ALL') {
+                return d.toLocaleDateString('en-CA', { month: 'short', year: 'numeric' });
+            }
+            return d.toLocaleDateString('en-CA', { month: 'short', day: 'numeric' });
+        } catch (err) {
+            return null;
+        }
+    }
+
+    function createLwBaseChart(container) {
+        var LW = getLw();
+        if (!LW) return null;
+        var timeVisible = chartTimeframe === '1D' || chartTimeframe === '1W';
+        try {
+            return LW.createChart(container, {
+            width: Math.max(1, container.clientWidth),
+            height: Math.max(1, container.clientHeight),
+            layout: {
+                background: {
+                    type: LW.ColorType != null ? LW.ColorType.Solid : 'solid',
+                    color: '#FFFFFF'
+                },
+                textColor: '#5C534E',
+                fontSize: 11
+            },
+            grid: {
+                vertLines: { color: 'rgba(0,0,0,0.06)' },
+                horzLines: { color: 'rgba(0,0,0,0.06)' }
+            },
+            rightPriceScale: {
+                borderVisible: false,
+                scaleMargins: { top: 0.16, bottom: 0.16 },
+                entireTextOnly: true,
+                alignLabels: true,
+                minimumWidth: 76
+            },
+            timeScale: {
+                borderVisible: false,
+                timeVisible: timeVisible,
+                secondsVisible: false,
+                rightOffset: 12,
+                tickMarkFormatter: lwTickMarkFormatter
+            },
+            crosshair: { mode: LW.CrosshairMode != null ? LW.CrosshairMode.Normal : 0 },
+            localization: {
+                locale: 'en-CA',
+                priceFormatter: lwPriceFormatter,
+                timeFormatter: lwTimeFormatter
+            }
+            });
+        } catch (e) {
+            return null;
+        }
+    }
+
+    /** Fallback: Firebase snapshots (CAD/g) as a line when Twelve Data is unavailable */
+    function loadChartFromFirebase(fetchId) {
+        var cutoff = getChartCutoffMs(chartTimeframe);
+        db.ref(CHART_HISTORY_PATH).orderByChild('t').startAt(cutoff).once('value', function (snapshot) {
+            if (fetchId !== chartFetchSeq) return;
+            if (fetchId === chartFirebaseSuppressFetchId) return;
+
+            var points = [];
+            snapshot.forEach(function (child) {
+                var v = child.val();
+                if (v && typeof v.t === 'number' && typeof v.bid === 'number') points.push(v);
+            });
+            points.sort(function (a, b) { return a.t - b.t; });
+            renderFirebaseLineChart(points, fetchId);
+        });
+    }
+
+    /** Draw / rebuild a gold line from `{ time: unixSec, value: CAD/oz }[]` (Firebase or Twelve close). */
+    function renderLwLineFromPoints(lineData) {
+        var root = document.getElementById('gold-chart-root');
+        var noData = document.getElementById('chart-no-data');
+        if (!root) return;
+
+        if (lineData.length === 0) {
+            if (noData) noData.style.display = 'flex';
+            root.style.display = 'none';
+            return;
+        }
+        if (noData) noData.style.display = 'none';
+        root.style.display = 'block';
+
+        var firstV = lineData[0].value;
+        var lastV = lineData[lineData.length - 1].value;
+        updateChangeBadgeFromSeries(firstV, lastV);
+
+        if (chartPriceEl) {
+            var ozLive = cadPerGramToOz(lastBidSpot);
+            chartPriceEl.textContent = !isNaN(ozLive) && ozLive > 0 ? formatCadPerOz(ozLive) : formatCadPerOz(lastV);
+        }
+
+        var LW = getLw();
+        if (!LW) {
+            if (noData) {
+                noData.style.display = 'flex';
+                var sp = noData.querySelector('span');
+                if (sp) sp.textContent = 'Chart library failed to load. Check your network.';
+            }
+            root.style.display = 'none';
+            return;
+        }
+
+        destroyLwChart();
+        lwChart = createLwBaseChart(root);
+        if (!lwChart) return;
+        lwSeries = lwChart.addLineSeries({
+            color: '#DAA520',
+            lineWidth: 2,
+            priceLineVisible: true,
+            lastValueVisible: true
+        });
+        lwSeriesKind = 'line';
+        lwSeries.setData(lineData);
+        lwChart.timeScale().fitContent();
+        attachLwResize(root);
+    }
+
+    function renderFirebaseLineChart(points, fetchId) {
+        if (fetchId !== chartFetchSeq) return;
+        var lineData = mergeLineByTime(points.map(function (p) {
+            return {
+                time: Math.floor(p.t / 1000),
+                value: cadPerGramToOz(p.bid)
+            };
+        }).filter(function (r) { return !isNaN(r.value) && !isNaN(r.time); }));
+        renderLwLineFromPoints(lineData);
+    }
+
+    var TWELVE_DATA_KEY = '3d0670e65f4b4e4891276c92fc6bb783';
+
+    function loadAndRenderChart() {
+        var fetchId = ++chartFetchSeq;
+        chartFirebaseSuppressFetchId = -1;
+        lastTwelveBarsUSD = null;
+
+        var tfMap = {
+            '1D':  { interval: '5min',  outputsize: 288 },
+            '1W':  { interval: '1h',    outputsize: 168 },
+            '1M':  { interval: '1day',  outputsize: 32 },
+            '3M':  { interval: '1day',  outputsize: 94 },
+            '6M':  { interval: '1day',  outputsize: 186 },
+            '1Y':  { interval: '1day',  outputsize: 366 },
+            '5Y':  { interval: '1week', outputsize: 270 },
+            'ALL': { interval: '1month', outputsize: 120 }
+        };
+        var params = tfMap[chartTimeframe] || tfMap['1D'];
+        var twelveUrl = 'https://api.twelvedata.com/time_series' +
+            '?symbol=XAU/USD' +
+            '&interval=' + params.interval +
+            '&outputsize=' + params.outputsize +
+            '&apikey=' + TWELVE_DATA_KEY;
+
+        var noData = document.getElementById('chart-no-data');
+        var root = document.getElementById('gold-chart-root');
+        var noDataSpan = noData && noData.querySelector('span');
+        if (noDataSpan) noDataSpan.textContent = 'Loading chart data\u2026';
+        if (noData) noData.style.display = 'flex';
+        if (root) root.style.display = 'none';
+        destroyLwChart();
+
+        loadChartFromFirebase(fetchId);
+
+        withTimeout(fetchJson(twelveUrl), 12000)
+            .then(function (data) {
+                if (fetchId !== chartFetchSeq) return;
+                if (!data || data.status === 'error' || !Array.isArray(data.values) || data.values.length === 0) return;
+
+                var values = data.values.slice().reverse();
+                lastTwelveBarsUSD = [];
+                values.forEach(function (v) {
+                    var t = new Date(v.datetime).getTime();
+                    var o = parseFloat(v.open);
+                    var h = parseFloat(v.high);
+                    var l = parseFloat(v.low);
+                    var c = parseFloat(v.close);
+                    if (isNaN(t) || isNaN(o) || isNaN(h) || isNaN(l) || isNaN(c)) return;
+                    lastTwelveBarsUSD.push({ t: t, o: o, h: h, l: l, c: c });
+                });
+
+                if (!lastTwelveBarsUSD.length) return;
+                chartFirebaseSuppressFetchId = fetchId;
+                renderTwelveData();
+            })
+            .catch(function () { /* keep Firebase line if present */ });
+    }
+
+    /** Twelve close (USD/oz) → CAD/oz line points using live bid anchor */
+    function buildCadOzLinePointsFromLastTwelve() {
+        if (!lastTwelveBarsUSD || lastTwelveBarsUSD.length === 0) return [];
+        var latestUSD = lastTwelveBarsUSD[lastTwelveBarsUSD.length - 1].c;
+        var convFactor;
+        if (!isNaN(lastBidSpot) && lastBidSpot > 0 && latestUSD > 0) {
+            convFactor = lastBidSpot / latestUSD;
+        } else {
+            convFactor = 1.38 / 31.1035;
+        }
+        return lastTwelveBarsUSD.map(function (b) {
+            return {
+                time: Math.floor(b.t / 1000),
+                value: cadPerGramToOz(b.c * convFactor)
+            };
+        });
+    }
+
+    /** Live spot refresh: update Twelve line without tearing down the chart */
+    function updateTwelveLineDataIfPossible() {
+        if (!lwChart || !lwSeries || lwSeriesKind !== 'line' || !lastTwelveBarsUSD || !lastTwelveBarsUSD.length) {
+            return false;
+        }
+        var lineData = mergeLineByTime(buildCadOzLinePointsFromLastTwelve());
+        if (!lineData.length) return false;
+        lwSeries.setData(lineData);
+        updateChangeBadgeFromSeries(lineData[0].value, lineData[lineData.length - 1].value);
+        if (chartPriceEl) {
+            var ozLive = cadPerGramToOz(lastBidSpot);
+            chartPriceEl.textContent = !isNaN(ozLive) && ozLive > 0
+                ? formatCadPerOz(ozLive)
+                : formatCadPerOz(lineData[lineData.length - 1].value);
+        }
+        return true;
+    }
+
+    function renderTwelveData() {
+        var lineData = mergeLineByTime(buildCadOzLinePointsFromLastTwelve());
+        renderLwLineFromPoints(lineData);
+    }
+
+    function initChart() {
+        loadAndRenderChart();
+        var tfBtns = document.querySelectorAll('.chart-tf');
+        tfBtns.forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                chartTimeframe = btn.dataset.tf;
+                tfBtns.forEach(function (b) {
+                    b.classList.remove('active');
+                    b.setAttribute('aria-selected', 'false');
+                });
+                btn.classList.add('active');
+                btn.setAttribute('aria-selected', 'true');
+                destroyLwChart();
+                loadAndRenderChart();
+            });
+        });
     }
 
     // =========================================
@@ -737,6 +1194,7 @@
         document.body.classList.add('role-' + currentRole);
         loadMetalPrices();
         setInterval(maybeAutoRefreshMetalPrices, AUTO_REFRESH_MS);
+        initChart();
         resetSpotPureCardTitles();
     }
 

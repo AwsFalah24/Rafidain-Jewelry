@@ -29,13 +29,28 @@
     var SESSION_KEY = 'rafidain_logged_in';
     var ROLE_KEY = 'rafidain_role';
     var USERS = [];
+    var usersLoaded = false;
+    var usersLoadFailed = false;
+
+    function normalizeUsers(data) {
+        if (!data) return [];
+        if (Array.isArray(data)) return data.filter(Boolean);
+        if (typeof data === 'object') {
+            return Object.keys(data).map(function (k) { return data[k]; }).filter(Boolean);
+        }
+        return [];
+    }
 
     // Sync users securely from Firebase
     db.ref('users').on('value', function (snapshot) {
-        var data = snapshot.val();
-        if (data && Array.isArray(data)) {
-            USERS = data;
-        }
+        USERS = normalizeUsers(snapshot.val());
+        usersLoaded = true;
+        usersLoadFailed = false;
+    }, function (err) {
+        console.error('Firebase users read error:', err && err.message ? err.message : err);
+        usersLoaded = true;
+        usersLoadFailed = true;
+        USERS = [];
     });
     var currentRole = '';
     var latestApiUpdateMs = 0;
@@ -1218,9 +1233,27 @@
         var user = loginUsername.value.trim();
         var pass = loginPassword.value;
 
+        if (!usersLoaded) {
+            loginError.textContent = 'Still loading — please try again in a moment';
+            return;
+        }
+
+        if (usersLoadFailed) {
+            loginError.textContent = 'Cannot reach user database. Check Firebase Rules (users path must be readable).';
+            return;
+        }
+
+        if (!USERS.length) {
+            loginError.textContent = 'No user accounts found in database';
+            return;
+        }
+
         var matched = null;
         for (var i = 0; i < USERS.length; i++) {
-            if (USERS[i].user === user && USERS[i].pass === pass) {
+            var row = USERS[i] || {};
+            var rowUser = String(row.user || '').trim();
+            var rowPass = String(row.pass || '');
+            if (rowUser === user && rowPass === pass) {
                 matched = USERS[i];
                 break;
             }

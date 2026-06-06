@@ -22,6 +22,7 @@
     var db = firebase.database();
 
     var METAL_PRICES_URL = 'https://www.xau.ca/apps/api/metalprices/CAD';
+    var CHART_HISTORY_PATH = 'priceHistory';
     var AUTO_REFRESH_MS = 5 * 60 * 1000;
     var REFRESH_CLICK_COOLDOWN_MS = 2000;
     var STORAGE_KEY = 'rafidain_offsets';
@@ -130,21 +131,103 @@
             });
     }
 
-    function fetchMetalPricesJson() {
-        var directUrl = withNoCache(METAL_PRICES_URL);
-        var codetabsUrl = 'https://api.codetabs.com/v1/proxy/?quest=' + encodeURIComponent(withNoCache(METAL_PRICES_URL));
-        var allOriginsUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(withNoCache(METAL_PRICES_URL));
+    /** Rejects after ms milliseconds */
+    function withTimeout(promise, ms) {
+        var timeout = new Promise(function (_, reject) {
+            setTimeout(function () { reject(new Error('timeout')); }, ms);
+        });
+        return Promise.race([promise, timeout]);
+    }
 
-        return fetchJson(directUrl)
-            .then(function (data) { return { data: data, source: 'live' }; })
-            .catch(function () {
-                return fetchJson(codetabsUrl)
-                    .then(function (data) { return { data: data, source: 'proxy-codetabs' }; });
-            })
-            .catch(function () {
-                return fetchJson(allOriginsUrl)
-                    .then(function (data) { return { data: data, source: 'proxy-allorigins' }; });
+    function isValidMetalPricesData(data) {
+        var gold = data && data.prices && data.prices.gold;
+        return !!(gold && gold.sell && gold.buy && gold.sell.kg != null && gold.buy.kg != null);
+    }
+
+    function fetchAllOriginsGet(targetUrl) {
+        var url = 'https://api.allorigins.win/get?url=' + encodeURIComponent(targetUrl);
+        return fetchJson(url).then(function (wrapper) {
+            if (!wrapper || typeof wrapper.contents !== 'string') throw new Error('invalid allorigins wrapper');
+            return JSON.parse(wrapper.contents);
+        });
+    }
+
+    function fetchLatestSpotFromFirebase() {
+        return readLatestPriceHistoryEntry().then(function (v) {
+            return {
+                data: {
+                    rates: { lastUpdate: null },
+                    prices: {
+                        gold: {
+                            sell: { kg: String(v.bid * KG_TO_PER_GRAM) },
+                            buy: { kg: String(v.ask * KG_TO_PER_GRAM) }
+                        }
+                    }
+                },
+                source: 'firebase-cache'
+            };
+        });
+    }
+
+    function readLatestPriceHistoryEntry() {
+        return new Promise(function (resolve, reject) {
+            db.ref(CHART_HISTORY_PATH).orderByChild('t').limitToLast(1).once('value', function (snap) {
+                var latest = null;
+                snap.forEach(function (child) { latest = child.val(); });
+                if (!latest || typeof latest.bid !== 'number' || typeof latest.ask !== 'number') {
+                    reject(new Error('no cached spot'));
+                    return;
+                }
+                resolve(latest);
+            }, reject);
+        });
+    }
+
+    function fetchMetalPricesJson() {
+        var cachedUrl = withNoCache(METAL_PRICES_URL);
+        var liveSources = [
+            {
+                source: 'live',
+                timeoutMs: 4000,
+                run: function () { return fetchJson(cachedUrl); }
+            },
+            {
+                source: 'proxy-allorigins',
+                timeoutMs: 15000,
+                run: function () { return fetchAllOriginsGet(cachedUrl); }
+            }
+        ];
+
+        function trySource(entry) {
+            return withTimeout(entry.run(), entry.timeoutMs)
+                .then(function (data) {
+                    if (!isValidMetalPricesData(data)) throw new Error('invalid payload');
+                    return { data: data, source: entry.source };
+                });
+        }
+
+        function raceSources(sources) {
+            return new Promise(function (resolve, reject) {
+                var pending = sources.length;
+                var settled = false;
+                sources.forEach(function (entry) {
+                    trySource(entry)
+                        .then(function (result) {
+                            if (settled) return;
+                            settled = true;
+                            resolve(result);
+                        })
+                        .catch(function () {
+                            pending -= 1;
+                            if (!settled && pending === 0) reject(new Error('All sources failed'));
+                        });
+                });
             });
+        }
+
+        return raceSources(liveSources).catch(function () {
+            return fetchLatestSpotFromFirebase();
+        });
     }
 
     // =========================================
@@ -323,6 +406,28 @@
         });
     }
 
+    function applySpotValuesToGrid(bid, ask) {
+        lastBidSpot = bid;
+        lastAskSpot = ask;
+        if (spotPureSellEl) spotPureSellEl.textContent = formatCadPerGram(bid);
+        if (spotPureBuyEl) spotPureBuyEl.textContent = formatCadPerGram(ask);
+        priceCells.forEach(function (cell) {
+            applyCellPrice(cell);
+        });
+        applyBarPrices(ask);
+    }
+
+    function loadCachedSpotFromFirebase() {
+        readLatestPriceHistoryEntry()
+            .then(function (latest) {
+                if (!isNaN(lastBidSpot) && !isNaN(lastAskSpot)) return;
+                resetSpotPureCardTitles();
+                applySpotValuesToGrid(latest.bid, latest.ask);
+                indicator.textContent = 'Showing last saved prices…';
+            })
+            .catch(function () { /* no saved history yet */ });
+    }
+
     function applyGoldSpotPrices(result) {
         resetSpotPureCardTitles();
         var data = result && result.data;
@@ -336,39 +441,7 @@
         }
 
         // BID price is gold.sell.kg, ASK price is gold.buy.kg (CAD/kg → per gram for grid + bars)
-        lastBidSpot = apiKgToPerGram(gold.sell.kg);
-        lastAskSpot = apiKgToPerGram(gold.buy.kg);
-
-        // Top banners: pure 24K spot only (no formula). Sell = API "you buy" (gold.sell.kg), Buy = API "you sell" (gold.buy.kg).
-        if (spotPureSellEl) spotPureSellEl.textContent = formatCadPerGram(lastBidSpot);
-        if (spotPureBuyEl) spotPureBuyEl.textContent = formatCadPerGram(lastAskSpot);
-
-        priceCells.forEach(function (cell) {
-            applyCellPrice(cell);
-        });
-
-        // Gold bars: same per-gram ask as grid (kg ÷ 1000)
-        applyBarPrices(lastAskSpot);
-
-        // Save price snapshot to Firebase for chart history
-        var snapNow = Date.now();
-        db.ref('priceHistory').push({ t: snapNow, bid: lastBidSpot, ask: lastAskSpot });
-        // Trim entries older than 30 days
-        var cutoff30d = snapNow - (30 * 24 * 60 * 60 * 1000);
-        db.ref('priceHistory').orderByChild('t').endAt(cutoff30d).once('value', function (snap) {
-            var updates = {};
-            snap.forEach(function (child) { updates[child.key] = null; });
-            if (Object.keys(updates).length) db.ref('priceHistory').update(updates);
-        });
-
-        // Chart headline: CAD per troy oz (same order of magnitude as major gold tickers)
-        if (chartPriceEl) {
-            var oz = cadPerGramToOz(lastBidSpot);
-            chartPriceEl.textContent = isNaN(oz) ? '—' : formatCadPerOz(oz);
-        }
-
-        // Re-convert Twelve Data closes with updated spot anchor (no re-fetch needed)
-        updateTwelveLineDataIfPossible();
+        applySpotValuesToGrid(apiKgToPerGram(gold.sell.kg), apiKgToPerGram(gold.buy.kg));
 
         var updated = data.rates && data.rates.lastUpdate;
         var updatedMs = updated ? Date.parse(updated) : NaN;
@@ -380,6 +453,28 @@
             latestApiUpdateMs = updatedMs;
         }
 
+        // Save price snapshot to Firebase for chart history
+        var snapNow = Date.now();
+        if (source !== 'firebase-cache') {
+            db.ref(CHART_HISTORY_PATH).push({ t: snapNow, bid: lastBidSpot, ask: lastAskSpot });
+            // Trim entries older than 30 days
+            var cutoff30d = snapNow - (30 * 24 * 60 * 60 * 1000);
+            db.ref(CHART_HISTORY_PATH).orderByChild('t').endAt(cutoff30d).once('value', function (snap) {
+                var updates = {};
+                snap.forEach(function (child) { updates[child.key] = null; });
+                if (Object.keys(updates).length) db.ref('priceHistory').update(updates);
+            });
+        }
+
+        // Chart headline: CAD per troy oz (same order of magnitude as major gold tickers)
+        if (chartPriceEl) {
+            var oz = cadPerGramToOz(lastBidSpot);
+            chartPriceEl.textContent = isNaN(oz) ? '—' : formatCadPerOz(oz);
+        }
+
+        // Re-convert Twelve Data closes with updated spot anchor (no re-fetch needed)
+        updateTwelveLineDataIfPossible();
+
         var when = '';
         if (updated) {
             try {
@@ -387,8 +482,8 @@
             } catch (e) { when = updated; }
         }
         var via = '';
-        if (source === 'proxy-codetabs') via = ' · via codetabs';
-        else if (source === 'proxy-allorigins') via = ' · via allorigins';
+        if (source === 'proxy-allorigins') via = ' · via allorigins';
+        else if (source === 'firebase-cache') via = ' · cached';
         else if (source === 'proxy') via = ' · via proxy';
         indicator.textContent = 'Gold spot CAD/g · xau.ca' + (when ? ' · ' + when : '') + via;
     }
@@ -411,10 +506,15 @@
                 isRefreshing = false;
             })
             .catch(function (err) {
-                indicator.textContent = 'Could not load gold prices';
-                if (err && err.message) indicator.textContent += ' (' + err.message + ')';
-                if (spotPureSellEl) spotPureSellEl.textContent = '—';
-                if (spotPureBuyEl) spotPureBuyEl.textContent = '—';
+                var hadPrices = !isNaN(lastBidSpot) && !isNaN(lastAskSpot);
+                if (hadPrices) {
+                    indicator.textContent = 'Live refresh failed — showing last known prices';
+                } else {
+                    indicator.textContent = 'Could not load gold prices';
+                    if (err && err.message) indicator.textContent += ' (' + err.message + ')';
+                    if (spotPureSellEl) spotPureSellEl.textContent = '—';
+                    if (spotPureBuyEl) spotPureBuyEl.textContent = '—';
+                }
                 isRefreshing = false;
             });
     }
@@ -433,21 +533,12 @@
     var lwResizeObserver = null;
     var lwChartWrap = null;
     var chartTimeframe = '1D';
-    var CHART_HISTORY_PATH = 'priceHistory';
     var chartPriceEl = document.getElementById('chart-current-price');
     /** OHLC from Twelve Data (USD/oz); line uses close only, re-anchored to live CAD/g spot. */
     var lastTwelveBarsUSD = null;
     var chartFetchSeq = 0;
     /** When Twelve Data succeeds for this fetch id, skip Firebase line (avoids stale overwrite). */
     var chartFirebaseSuppressFetchId = -1;
-
-    /** Rejects after ms milliseconds */
-    function withTimeout(promise, ms) {
-        var timeout = new Promise(function (_, reject) {
-            setTimeout(function () { reject(new Error('timeout')); }, ms);
-        });
-        return Promise.race([promise, timeout]);
-    }
 
     function getChartCutoffMs(tf) {
         var now = Date.now();
@@ -1207,6 +1298,7 @@
         mainHeader.classList.remove('hidden');
         mainContent.classList.remove('hidden');
         document.body.classList.add('role-' + currentRole);
+        loadCachedSpotFromFirebase();
         loadMetalPrices();
         setInterval(maybeAutoRefreshMetalPrices, AUTO_REFRESH_MS);
         initChart();

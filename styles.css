@@ -243,20 +243,6 @@ body {
     transform: translateY(0) scale(0.98);
 }
 
-/* Logout in header */
-#btn-logout {
-    margin-left: 12px;
-    color: var(--gold-100);
-    border-color: rgba(255, 255, 255, 0.15);
-    background: rgba(255, 255, 255, 0.05);
-}
-
-#btn-logout:hover {
-    background: rgba(255, 255, 255, 0.12);
-    border-color: var(--gold-400);
-    color: var(--gold-300);
-}
-
 /* =========================
    HEADER
    ========================= */
@@ -328,6 +314,26 @@ body {
 .header-right {
     display: flex;
     align-items: center;
+    gap: 16px;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+#main-header .toolbar-btn {
+    color: var(--gold-100);
+    border-color: rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+#main-header .toolbar-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: var(--gold-400);
+    color: var(--gold-300);
+    box-shadow: none;
 }
 
 .header-time-block {
@@ -407,12 +413,6 @@ body {
     font-weight: 700;
     color: var(--maroon-700);
     letter-spacing: -0.3px;
-}
-
-.toolbar-right {
-    display: flex;
-    align-items: center;
-    gap: 6px;
 }
 
 .toolbar-btn {
@@ -1173,7 +1173,7 @@ body.role-viewer .bar-price {
         -webkit-print-color-adjust: exact;
     }
 
-    .toolbar-right {
+    .header-actions {
         display: none;
     }
 

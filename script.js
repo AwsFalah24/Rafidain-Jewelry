@@ -159,8 +159,8 @@
                     rates: { lastUpdate: null },
                     prices: {
                         gold: {
-                            sell: { kg: String(v.bid * KG_TO_PER_GRAM) },
-                            buy: { kg: String(v.ask * KG_TO_PER_GRAM) }
+                            sell: { kg: String(v.ask * KG_TO_PER_GRAM) },
+                            buy: { kg: String(v.bid * KG_TO_PER_GRAM) }
                         }
                     }
                 },
@@ -392,7 +392,7 @@
     function applyBarCellPrice(cell, sellSpot) {
         var barKey = cell.dataset.bar;
         var formula = BAR_FORMULAS[barKey];
-        // sellSpot = ask CAD/g (API gold.buy.kg ÷ KG_TO_PER_GRAM), same base as grid
+        // sellSpot = buy-side CAD/g (API gold.sell.kg ÷ KG_TO_PER_GRAM), same base as grid
         if (formula && !isNaN(sellSpot)) {
             var price = (sellSpot * formula.mult) + formula.markup;
             cell.textContent = formatBarPrice(price);
@@ -440,8 +440,8 @@
             return;
         }
 
-        // BID price is gold.sell.kg, ASK price is gold.buy.kg (CAD/kg → per gram for grid + bars)
-        applySpotValuesToGrid(apiKgToPerGram(gold.sell.kg), apiKgToPerGram(gold.buy.kg));
+        // Sell card = API gold.buy.kg, Buy card = API gold.sell.kg (CAD/kg → per gram for grid + bars)
+        applySpotValuesToGrid(apiKgToPerGram(gold.buy.kg), apiKgToPerGram(gold.sell.kg));
 
         var updated = data.rates && data.rates.lastUpdate;
         var updatedMs = updated ? Date.parse(updated) : NaN;

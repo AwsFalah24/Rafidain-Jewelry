@@ -159,8 +159,8 @@
                     rates: { lastUpdate: null },
                     prices: {
                         gold: {
-                            sell: { kg: String(v.ask * KG_TO_PER_GRAM) },
-                            buy: { kg: String(v.bid * KG_TO_PER_GRAM) }
+                            sell: { kg: String(v.bid * KG_TO_PER_GRAM) },
+                            buy: { kg: String(v.ask * KG_TO_PER_GRAM) }
                         }
                     }
                 },
@@ -392,7 +392,7 @@
     function applyBarCellPrice(cell, sellSpot) {
         var barKey = cell.dataset.bar;
         var formula = BAR_FORMULAS[barKey];
-        // sellSpot = buy-side CAD/g (API gold.sell.kg ÷ KG_TO_PER_GRAM), same base as grid
+        // sellSpot = ask CAD/g (API gold.buy.kg ÷ KG_TO_PER_GRAM), same base as grid
         if (formula && !isNaN(sellSpot)) {
             var price = (sellSpot * formula.mult) + formula.markup;
             cell.textContent = formatBarPrice(price);
@@ -406,11 +406,16 @@
         });
     }
 
+    /** Top spot cards only: Sell shows API buy, Buy shows API sell. Grid uses bid/ask as-is. */
+    function updateSpotPureCards(bid, ask) {
+        if (spotPureSellEl) spotPureSellEl.textContent = formatCadPerGram(ask);
+        if (spotPureBuyEl) spotPureBuyEl.textContent = formatCadPerGram(bid);
+    }
+
     function applySpotValuesToGrid(bid, ask) {
         lastBidSpot = bid;
         lastAskSpot = ask;
-        if (spotPureSellEl) spotPureSellEl.textContent = formatCadPerGram(bid);
-        if (spotPureBuyEl) spotPureBuyEl.textContent = formatCadPerGram(ask);
+        updateSpotPureCards(bid, ask);
         priceCells.forEach(function (cell) {
             applyCellPrice(cell);
         });
@@ -440,8 +445,8 @@
             return;
         }
 
-        // Sell card = API gold.buy.kg, Buy card = API gold.sell.kg (CAD/kg → per gram for grid + bars)
-        applySpotValuesToGrid(apiKgToPerGram(gold.buy.kg), apiKgToPerGram(gold.sell.kg));
+        // Grid/bars: gold.sell.kg → bid, gold.buy.kg → ask. Top cards swap those for display only.
+        applySpotValuesToGrid(apiKgToPerGram(gold.sell.kg), apiKgToPerGram(gold.buy.kg));
 
         var updated = data.rates && data.rates.lastUpdate;
         var updatedMs = updated ? Date.parse(updated) : NaN;

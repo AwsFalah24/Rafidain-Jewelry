@@ -60,13 +60,13 @@
     var lastBidSpot = NaN;
     var lastAskSpot = NaN;
 
-    /** Mon–Sat, 10:00–17:59 (local time on this device). */
+    /** Mon–Sat, 7:00–19:59 (local time on this device). */
     function isBusinessHoursActive(date) {
         var d = date || new Date();
         var day = d.getDay();
         if (day < 1 || day > 6) return false;
         var h = d.getHours();
-        return h >= 10 && h < 18;
+        return h >= 7 && h < 20;
     }
 
     var dateEl = document.getElementById('current-date');

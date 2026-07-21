@@ -23,9 +23,6 @@
 
     var METAL_PRICES_URL = 'https://www.xau.ca/apps/api/metalprices/CAD';
     var CHART_HISTORY_PATH = 'priceHistory';
-    var LIVE_SPOT_PATH = 'liveSpot';
-    /** Prefer Firebase liveSpot if updated within this window (server sync every 5 min). */
-    var LIVE_SPOT_MAX_AGE_MS = 15 * 60 * 1000;
     var AUTO_REFRESH_MS = 5 * 60 * 1000;
     var REFRESH_CLICK_COOLDOWN_MS = 2000;
     var STORAGE_KEY = 'rafidain_offsets';
@@ -211,35 +208,6 @@
         });
     }
 
-    /** Fresh prices written by GitHub Action / Cloud Function (no CORS). */
-    function fetchLiveSpotFromFirebase() {
-        return new Promise(function (resolve, reject) {
-            db.ref(LIVE_SPOT_PATH).once('value', function (snap) {
-                var v = snap.val();
-                if (!v || typeof v.bid !== 'number' || typeof v.ask !== 'number') {
-                    reject(new Error('no liveSpot'));
-                    return;
-                }
-                if (typeof v.t === 'number' && (Date.now() - v.t) > LIVE_SPOT_MAX_AGE_MS) {
-                    reject(new Error('liveSpot stale'));
-                    return;
-                }
-                resolve({
-                    data: {
-                        rates: { lastUpdate: v.apiUpdated || null },
-                        prices: {
-                            gold: {
-                                sell: { kg: String(v.bid * KG_TO_PER_GRAM) },
-                                buy: { kg: String(v.ask * KG_TO_PER_GRAM) }
-                            }
-                        }
-                    },
-                    source: 'firebase-live'
-                });
-            }, reject);
-        });
-    }
-
     function readLatestPriceHistoryEntry() {
         return new Promise(function (resolve, reject) {
             db.ref(CHART_HISTORY_PATH).orderByChild('t').limitToLast(1).once('value', function (snap) {
@@ -256,55 +224,27 @@
 
     function fetchMetalPricesJson() {
         var cachedUrl = withNoCache(METAL_PRICES_URL);
-        var liveSources = [
-            {
-                source: 'live',
-                timeoutMs: 4000,
-                run: function () { return fetchJson(cachedUrl); }
-            },
-            {
-                source: 'proxy-jina',
-                timeoutMs: 10000,
-                run: function () { return fetchJinaProxy(METAL_PRICES_URL); }
-            },
-            {
-                source: 'proxy-allorigins',
-                timeoutMs: 12000,
-                run: function () { return fetchAllOriginsGet(cachedUrl); }
-            }
-        ];
 
-        function trySource(entry) {
-            return withTimeout(entry.run(), entry.timeoutMs)
+        function trySource(source, run, timeoutMs) {
+            return withTimeout(run(), timeoutMs)
                 .then(function (data) {
                     if (!isValidMetalPricesData(data)) throw new Error('invalid payload');
-                    return { data: data, source: entry.source };
+                    return { data: data, source: source };
                 });
         }
 
-        function raceSources(sources) {
-            return new Promise(function (resolve, reject) {
-                var pending = sources.length;
-                var settled = false;
-                sources.forEach(function (entry) {
-                    trySource(entry)
-                        .then(function (result) {
-                            if (settled) return;
-                            settled = true;
-                            resolve(result);
-                        })
-                        .catch(function () {
-                            pending -= 1;
-                            if (!settled && pending === 0) reject(new Error('All sources failed'));
-                        });
-                });
+        // Primary: jina → fallback: allorigins → last resort: saved priceHistory
+        return trySource('proxy-jina', function () {
+            return fetchJinaProxy(METAL_PRICES_URL);
+        }, 10000)
+            .catch(function () {
+                return trySource('proxy-allorigins', function () {
+                    return fetchAllOriginsGet(cachedUrl);
+                }, 12000);
+            })
+            .catch(function () {
+                return fetchLatestSpotFromFirebase();
             });
-        }
-
-        // 1) Firebase liveSpot (server sync) → 2) browser proxies → 3) last priceHistory
-        return fetchLiveSpotFromFirebase()
-            .catch(function () { return raceSources(liveSources); })
-            .catch(function () { return fetchLatestSpotFromFirebase(); });
     }
 
     // =========================================
@@ -500,33 +440,14 @@
     }
 
     function loadCachedSpotFromFirebase() {
-        db.ref(LIVE_SPOT_PATH).once('value', function (snap) {
-            if (!isNaN(lastBidSpot) && !isNaN(lastAskSpot)) return;
-            var latest = snap.val();
-            if (latest && typeof latest.bid === 'number' && typeof latest.ask === 'number') {
+        readLatestPriceHistoryEntry()
+            .then(function (hist) {
+                if (!isNaN(lastBidSpot) && !isNaN(lastAskSpot)) return;
                 resetSpotPureCardTitles();
-                applySpotValuesToGrid(latest.bid, latest.ask);
+                applySpotValuesToGrid(hist.bid, hist.ask);
                 indicator.textContent = 'Showing last saved prices…';
-                return;
-            }
-            readLatestPriceHistoryEntry()
-                .then(function (hist) {
-                    if (!isNaN(lastBidSpot) && !isNaN(lastAskSpot)) return;
-                    resetSpotPureCardTitles();
-                    applySpotValuesToGrid(hist.bid, hist.ask);
-                    indicator.textContent = 'Showing last saved prices…';
-                })
-                .catch(function () { /* no saved history yet */ });
-        }, function () {
-            readLatestPriceHistoryEntry()
-                .then(function (hist) {
-                    if (!isNaN(lastBidSpot) && !isNaN(lastAskSpot)) return;
-                    resetSpotPureCardTitles();
-                    applySpotValuesToGrid(hist.bid, hist.ask);
-                    indicator.textContent = 'Showing last saved prices…';
-                })
-                .catch(function () { /* no saved history yet */ });
-        });
+            })
+            .catch(function () { /* no saved history yet */ });
     }
 
     function applyGoldSpotPrices(result) {
@@ -554,9 +475,9 @@
             latestApiUpdateMs = updatedMs;
         }
 
-        // Save price snapshot to Firebase for chart history (server sync already writes when using firebase-live)
+        // Save price snapshot to Firebase for chart history
         var snapNow = Date.now();
-        if (source !== 'firebase-cache' && source !== 'firebase-live') {
+        if (source !== 'firebase-cache') {
             db.ref(CHART_HISTORY_PATH).push({ t: snapNow, bid: lastBidSpot, ask: lastAskSpot });
             // Trim entries older than 30 days
             var cutoff30d = snapNow - (30 * 24 * 60 * 60 * 1000);
@@ -583,8 +504,7 @@
             } catch (e) { when = updated; }
         }
         var via = '';
-        if (source === 'firebase-live') via = ' · via firebase';
-        else if (source === 'proxy-jina') via = ' · via jina';
+        if (source === 'proxy-jina') via = ' · via jina';
         else if (source === 'proxy-allorigins') via = ' · via allorigins';
         else if (source === 'firebase-cache') via = ' · cached (live unavailable)';
         else if (source === 'proxy') via = ' · via proxy';

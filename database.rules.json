@@ -14,7 +14,8 @@
     },
     "priceHistory": {
       ".read": true,
-      ".write": true
+      ".write": true,
+      ".indexOn": ["t"]
     },
     "liveSpot": {
       ".read": true,

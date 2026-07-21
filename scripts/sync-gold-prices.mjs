@@ -104,40 +104,22 @@ async function main() {
         ask: spot.ask
     });
 
-    // Trim history older than 30 days (needs ".indexOn": "t" on priceHistory for speed)
-    try {
-        var cutoff30d = snapNow - (30 * 24 * 60 * 60 * 1000);
-        var oldSnap = await Promise.race([
-            db.ref(PRICE_HISTORY_PATH).orderByChild('t').endAt(cutoff30d).once('value'),
-            new Promise(function (_, reject) {
-                setTimeout(function () { reject(new Error('trim timeout')); }, 15000);
-            })
-        ]);
-        var updates = {};
-        oldSnap.forEach(function (child) {
-            updates[child.key] = null;
-        });
-        if (Object.keys(updates).length) {
-            await db.ref(PRICE_HISTORY_PATH).update(updates);
-        }
-    } catch (trimErr) {
-        console.warn('Skipping priceHistory trim:', trimErr && trimErr.message ? trimErr.message : trimErr);
-    }
-
     console.log(
         'Synced liveSpot bid=' + spot.bid.toFixed(4) +
         ' ask=' + spot.ask.toFixed(4) +
         ' apiUpdated=' + (spot.apiUpdated || 'n/a')
     );
-
-    // Firebase Admin keeps sockets open — exit so GitHub Actions can finish
-    await admin.app().delete();
 }
 
-main().catch(function (err) {
-    console.error(err);
-    process.exit(1);
-});
+main()
+    .then(function () {
+        // Firebase Admin leaves open sockets; force-exit so Actions finishes immediately
+        process.exit(0);
+    })
+    .catch(function (err) {
+        console.error(err);
+        process.exit(1);
+    });
 
 /*
 Realtime Database rules — add this node (keep your existing rules for users/offsets/etc):
@@ -145,6 +127,12 @@ Realtime Database rules — add this node (keep your existing rules for users/of
   "liveSpot": {
     ".read": true,
     ".write": false
+  }
+
+  "priceHistory": {
+    ".read": true,
+    ".write": true,
+    ".indexOn": ["t"]
   }
 
 Writes come from this script / Cloud Functions via the Admin SDK (bypasses rules).

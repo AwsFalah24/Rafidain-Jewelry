@@ -1,0 +1,41 @@
+# Server-side gold price sync → Firebase (no CORS proxies needed in the browser).
+# Requires repo secret FIREBASE_SERVICE_ACCOUNT (Firebase service account JSON).
+name: Sync gold prices
+
+on:
+  schedule:
+    # Every 5 minutes
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: sync-gold-prices
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: scripts/package-lock.json
+
+      - name: Install deps
+        working-directory: scripts
+        run: npm install --omit=dev
+
+      - name: Fetch xau.ca and write Firebase liveSpot
+        working-directory: scripts
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FIREBASE_DATABASE_URL: https://rafidain-co-default-rtdb.firebaseio.com
+          # Allow manual "Run workflow" anytime; scheduled runs still honor business hours in the script
+          FORCE_SYNC: ${{ github.event_name == 'workflow_dispatch' && '1' || '0' }}
+        run: node sync-gold-prices.mjs

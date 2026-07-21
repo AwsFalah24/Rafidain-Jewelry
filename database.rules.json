@@ -1,0 +1,24 @@
+{
+  "rules": {
+    "users": {
+      ".read": true,
+      ".write": false
+    },
+    "offsets": {
+      ".read": true,
+      ".write": true
+    },
+    "barFormulas": {
+      ".read": true,
+      ".write": true
+    },
+    "priceHistory": {
+      ".read": true,
+      ".write": true
+    },
+    "liveSpot": {
+      ".read": true,
+      ".write": false
+    }
+  }
+}

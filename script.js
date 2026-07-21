@@ -23,6 +23,9 @@
 
     var METAL_PRICES_URL = 'https://www.xau.ca/apps/api/metalprices/CAD';
     var CHART_HISTORY_PATH = 'priceHistory';
+    var LIVE_SPOT_PATH = 'liveSpot';
+    /** Prefer Firebase liveSpot if updated within this window (server sync every 5 min). */
+    var LIVE_SPOT_MAX_AGE_MS = 15 * 60 * 1000;
     var AUTO_REFRESH_MS = 5 * 60 * 1000;
     var REFRESH_CLICK_COOLDOWN_MS = 2000;
     var STORAGE_KEY = 'rafidain_offsets';
@@ -152,6 +155,45 @@
         });
     }
 
+    /** Jina reader proxy — returns CORS JSON (raw, markdown-wrapped, or {data:{text|content}}). */
+    function fetchJinaProxy(targetUrl) {
+        var url = 'https://r.jina.ai/' + targetUrl;
+        return fetch(url, {
+            credentials: 'omit',
+            cache: 'no-store',
+            headers: {
+                'Accept': 'application/json',
+                'X-Return-Format': 'text'
+            }
+        }).then(function (r) {
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return r.text();
+        }).then(function (text) {
+            var trimmed = String(text || '').trim();
+            if (!trimmed) throw new Error('empty jina response');
+
+            function extractJsonObject(str) {
+                var start = str.indexOf('{');
+                var end = str.lastIndexOf('}');
+                if (start === -1 || end <= start) throw new Error('no JSON object');
+                return JSON.parse(str.slice(start, end + 1));
+            }
+
+            var parsed = extractJsonObject(trimmed);
+
+            // Jina API envelope: { code, data: { text|content: "<json string>" } }
+            if (parsed && parsed.data && !isValidMetalPricesData(parsed)) {
+                var inner = parsed.data.text || parsed.data.content;
+                if (typeof inner === 'string' && inner.trim()) {
+                    parsed = extractJsonObject(inner);
+                }
+            }
+
+            if (!isValidMetalPricesData(parsed)) throw new Error('invalid jina payload');
+            return parsed;
+        });
+    }
+
     function fetchLatestSpotFromFirebase() {
         return readLatestPriceHistoryEntry().then(function (v) {
             return {
@@ -166,6 +208,35 @@
                 },
                 source: 'firebase-cache'
             };
+        });
+    }
+
+    /** Fresh prices written by GitHub Action / Cloud Function (no CORS). */
+    function fetchLiveSpotFromFirebase() {
+        return new Promise(function (resolve, reject) {
+            db.ref(LIVE_SPOT_PATH).once('value', function (snap) {
+                var v = snap.val();
+                if (!v || typeof v.bid !== 'number' || typeof v.ask !== 'number') {
+                    reject(new Error('no liveSpot'));
+                    return;
+                }
+                if (typeof v.t === 'number' && (Date.now() - v.t) > LIVE_SPOT_MAX_AGE_MS) {
+                    reject(new Error('liveSpot stale'));
+                    return;
+                }
+                resolve({
+                    data: {
+                        rates: { lastUpdate: v.apiUpdated || null },
+                        prices: {
+                            gold: {
+                                sell: { kg: String(v.bid * KG_TO_PER_GRAM) },
+                                buy: { kg: String(v.ask * KG_TO_PER_GRAM) }
+                            }
+                        }
+                    },
+                    source: 'firebase-live'
+                });
+            }, reject);
         });
     }
 
@@ -192,8 +263,13 @@
                 run: function () { return fetchJson(cachedUrl); }
             },
             {
+                source: 'proxy-jina',
+                timeoutMs: 10000,
+                run: function () { return fetchJinaProxy(METAL_PRICES_URL); }
+            },
+            {
                 source: 'proxy-allorigins',
-                timeoutMs: 15000,
+                timeoutMs: 12000,
                 run: function () { return fetchAllOriginsGet(cachedUrl); }
             }
         ];
@@ -225,9 +301,10 @@
             });
         }
 
-        return raceSources(liveSources).catch(function () {
-            return fetchLatestSpotFromFirebase();
-        });
+        // 1) Firebase liveSpot (server sync) → 2) browser proxies → 3) last priceHistory
+        return fetchLiveSpotFromFirebase()
+            .catch(function () { return raceSources(liveSources); })
+            .catch(function () { return fetchLatestSpotFromFirebase(); });
     }
 
     // =========================================
@@ -423,14 +500,33 @@
     }
 
     function loadCachedSpotFromFirebase() {
-        readLatestPriceHistoryEntry()
-            .then(function (latest) {
-                if (!isNaN(lastBidSpot) && !isNaN(lastAskSpot)) return;
+        db.ref(LIVE_SPOT_PATH).once('value', function (snap) {
+            if (!isNaN(lastBidSpot) && !isNaN(lastAskSpot)) return;
+            var latest = snap.val();
+            if (latest && typeof latest.bid === 'number' && typeof latest.ask === 'number') {
                 resetSpotPureCardTitles();
                 applySpotValuesToGrid(latest.bid, latest.ask);
                 indicator.textContent = 'Showing last saved prices…';
-            })
-            .catch(function () { /* no saved history yet */ });
+                return;
+            }
+            readLatestPriceHistoryEntry()
+                .then(function (hist) {
+                    if (!isNaN(lastBidSpot) && !isNaN(lastAskSpot)) return;
+                    resetSpotPureCardTitles();
+                    applySpotValuesToGrid(hist.bid, hist.ask);
+                    indicator.textContent = 'Showing last saved prices…';
+                })
+                .catch(function () { /* no saved history yet */ });
+        }, function () {
+            readLatestPriceHistoryEntry()
+                .then(function (hist) {
+                    if (!isNaN(lastBidSpot) && !isNaN(lastAskSpot)) return;
+                    resetSpotPureCardTitles();
+                    applySpotValuesToGrid(hist.bid, hist.ask);
+                    indicator.textContent = 'Showing last saved prices…';
+                })
+                .catch(function () { /* no saved history yet */ });
+        });
     }
 
     function applyGoldSpotPrices(result) {
@@ -458,9 +554,9 @@
             latestApiUpdateMs = updatedMs;
         }
 
-        // Save price snapshot to Firebase for chart history
+        // Save price snapshot to Firebase for chart history (server sync already writes when using firebase-live)
         var snapNow = Date.now();
-        if (source !== 'firebase-cache') {
+        if (source !== 'firebase-cache' && source !== 'firebase-live') {
             db.ref(CHART_HISTORY_PATH).push({ t: snapNow, bid: lastBidSpot, ask: lastAskSpot });
             // Trim entries older than 30 days
             var cutoff30d = snapNow - (30 * 24 * 60 * 60 * 1000);
@@ -487,8 +583,10 @@
             } catch (e) { when = updated; }
         }
         var via = '';
-        if (source === 'proxy-allorigins') via = ' · via allorigins';
-        else if (source === 'firebase-cache') via = ' · cached';
+        if (source === 'firebase-live') via = ' · via firebase';
+        else if (source === 'proxy-jina') via = ' · via jina';
+        else if (source === 'proxy-allorigins') via = ' · via allorigins';
+        else if (source === 'firebase-cache') via = ' · cached (live unavailable)';
         else if (source === 'proxy') via = ' · via proxy';
         indicator.textContent = 'Gold spot CAD/g · xau.ca' + (when ? ' · ' + when : '') + via;
     }
@@ -524,6 +622,7 @@
             });
     }
 
+    /** Auto-refresh every 5 min during business hours only (manual refresh always works). */
     function maybeAutoRefreshMetalPrices() {
         if (!isBusinessHoursActive()) return;
         loadMetalPrices();
